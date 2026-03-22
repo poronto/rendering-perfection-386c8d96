@@ -55,19 +55,4 @@ export const DEFAULT_PERSONAS: Persona[] = [
   },
 ];
 
-export const SAMPLE_CONVERSATIONS: Conversation[] = [
-  {
-    id: 'c1',
-    title: 'Plugin Installation & Activation',
-    personaId: '2',
-    messages: [],
-    updatedAt: new Date(Date.now() - 86400000 * 2),
-  },
-  {
-    id: 'c2',
-    title: 'Health consultation follow-up',
-    personaId: '1',
-    messages: [],
-    updatedAt: new Date(Date.now() - 86400000 * 5),
-  },
-];
+export const SAMPLE_CONVERSATIONS: Conversation[] = [];

@@ -128,12 +128,6 @@ export function ChatSidebar({
             New conversation
           </button>
 
-          {filtered.length > 0 && (
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 pt-3 pb-1">
-              Last 30 Days
-            </p>
-          )}
-
           {filtered.map((conv) => (
             <button
               key={conv.id}
@@ -148,9 +142,6 @@ export function ChatSidebar({
               `}
             >
               <span className="truncate flex-1">{conv.title}</span>
-              <span className="text-[11px] text-muted-foreground ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                {formatDate(conv.updatedAt)}
-              </span>
             </button>
           ))}
         </div>
