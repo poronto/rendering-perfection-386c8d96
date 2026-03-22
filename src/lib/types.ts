@@ -1,0 +1,73 @@
+export interface Persona {
+  id: string;
+  name: string;
+  description: string;
+  model: string;
+  avatar: string;
+  isDefault?: boolean;
+}
+
+export interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  persona?: Persona;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  personaId: string;
+  messages: Message[];
+  updatedAt: Date;
+}
+
+export const DEFAULT_PERSONAS: Persona[] = [
+  {
+    id: '1',
+    name: 'Dr. Mark',
+    description: 'Experienced physician with decades of clinical practice',
+    model: 'gpt-4',
+    avatar: 'DM',
+    isDefault: true,
+  },
+  {
+    id: '2',
+    name: 'General Assistant',
+    description: 'Helpful AI assistant for any task',
+    model: 'gpt-4',
+    avatar: 'GA',
+  },
+  {
+    id: '3',
+    name: 'Code Wizard',
+    description: 'Expert programmer and software architect',
+    model: 'gpt-4',
+    avatar: 'CW',
+  },
+  {
+    id: '4',
+    name: 'Creative Writer',
+    description: 'Storyteller and content creator',
+    model: 'claude-3-opus',
+    avatar: 'CR',
+  },
+];
+
+export const SAMPLE_CONVERSATIONS: Conversation[] = [
+  {
+    id: 'c1',
+    title: 'Plugin Installation & Activation',
+    personaId: '2',
+    messages: [],
+    updatedAt: new Date(Date.now() - 86400000 * 2),
+  },
+  {
+    id: 'c2',
+    title: 'Health consultation follow-up',
+    personaId: '1',
+    messages: [],
+    updatedAt: new Date(Date.now() - 86400000 * 5),
+  },
+];
