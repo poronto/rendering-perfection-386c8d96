@@ -65,8 +65,7 @@ export function ChatSidebar({
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <h1 className="text-lg font-bold text-foreground tracking-tight">Pipeline</h1>
+        <div className="flex items-center justify-end px-5 pt-5 pb-3">
           <button
             onClick={onClose}
             className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors lg:hidden"
