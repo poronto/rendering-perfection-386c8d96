@@ -1,0 +1,171 @@
+import { useState } from 'react';
+import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X, Menu } from 'lucide-react';
+import { Conversation, Persona } from '@/lib/types';
+
+interface ChatSidebarProps {
+  conversations: Conversation[];
+  personas: Persona[];
+  activeConversationId: string | null;
+  onSelectConversation: (id: string) => void;
+  onNewConversation: () => void;
+  onDeleteConversation: (id: string) => void;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const navItems = [
+  { icon: MessageCircle, label: 'Chat', active: true },
+  { icon: Trophy, label: 'Leaderboard', badge: 'BETA' },
+  { icon: User, label: 'Profile' },
+  { icon: Gift, label: 'Refer for rewards' },
+  { icon: Globe, label: 'Find us', expandable: true },
+];
+
+export function ChatSidebar({
+  conversations,
+  activeConversationId,
+  onSelectConversation,
+  onNewConversation,
+  onDeleteConversation,
+  isOpen,
+  onClose,
+}: ChatSidebarProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filtered = conversations.filter(c =>
+    c.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const formatDate = (date: Date) => {
+    const days = Math.floor((Date.now() - date.getTime()) / 86400000);
+    if (days < 1) return 'Today';
+    if (days < 7) return `${days}d ago`;
+    if (days < 30) return `${Math.floor(days / 7)}w ago`;
+    return `${Math.floor(days / 30)}mo ago`;
+  };
+
+  return (
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`
+          fixed top-0 left-0 z-50 h-full w-[280px]
+          bg-sidebar border-r border-sidebar-border
+          flex flex-col
+          transition-transform duration-300 ease-out
+          lg:relative lg:translate-x-0
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <h1 className="text-lg font-bold text-foreground tracking-tight">Pipeline</h1>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors lg:hidden"
+          >
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        {/* Nav items */}
+        <nav className="px-3 space-y-0.5">
+          {navItems.map((item) => (
+            <button
+              key={item.label}
+              className={`
+                w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+                transition-all duration-150
+                ${item.active
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                }
+              `}
+            >
+              <item.icon className="w-4 h-4 shrink-0" />
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.badge && (
+                <span className="text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-primary/20 text-primary">
+                  {item.badge}
+                </span>
+              )}
+              {item.expandable && <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          ))}
+        </nav>
+
+        {/* Search */}
+        <div className="px-3 mt-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search conversations"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm bg-sidebar-accent rounded-lg
+                         text-foreground placeholder:text-muted-foreground
+                         border border-transparent focus:border-primary/30 focus:outline-none
+                         transition-colors"
+            />
+          </div>
+        </div>
+
+        {/* Conversations */}
+        <div className="flex-1 overflow-y-auto px-3 mt-3 space-y-1">
+          <button
+            onClick={onNewConversation}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                       text-primary hover:bg-primary/10 transition-colors font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            New conversation
+          </button>
+
+          {filtered.length > 0 && (
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 pt-3 pb-1">
+              Last 30 Days
+            </p>
+          )}
+
+          {filtered.map((conv) => (
+            <button
+              key={conv.id}
+              onClick={() => onSelectConversation(conv.id)}
+              className={`
+                group w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm
+                transition-all duration-150 text-left
+                ${conv.id === activeConversationId
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                }
+              `}
+            >
+              <span className="truncate flex-1">{conv.title}</span>
+              <span className="text-[11px] text-muted-foreground ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                {formatDate(conv.updatedAt)}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* User */}
+        <div className="p-3 border-t border-sidebar-border">
+          <div className="flex items-center gap-3 px-3 py-2">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-primary-foreground">
+              V
+            </div>
+            <span className="text-sm font-medium text-foreground">Versace</span>
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+}
