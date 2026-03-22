@@ -1,5 +1,6 @@
 interface WelcomeScreenProps {
   personaName: string;
+  onSendSuggestion: (text: string) => void;
 }
 
 const suggestions = [
@@ -8,7 +9,7 @@ const suggestions = [
   'Help me brainstorm an idea',
 ];
 
-export function WelcomeScreen({ personaName }: WelcomeScreenProps) {
+export function WelcomeScreen({ personaName, onSendSuggestion }: WelcomeScreenProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 pb-8">
       <div
@@ -35,6 +36,7 @@ export function WelcomeScreen({ personaName }: WelcomeScreenProps) {
         {suggestions.map((s) => (
           <button
             key={s}
+            onClick={() => onSendSuggestion(s)}
             className="px-4 py-2 rounded-full text-sm bg-secondary text-secondary-foreground
                        border border-border hover:bg-muted hover:border-primary/20
                        transition-all duration-200 active:scale-[0.97]"

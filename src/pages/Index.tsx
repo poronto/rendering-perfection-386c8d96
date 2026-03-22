@@ -132,7 +132,7 @@ const Index = () => {
 
         {/* Messages or welcome */}
         {currentMessages.length === 0 ? (
-          <WelcomeScreen personaName={selectedPersona.name} />
+          <WelcomeScreen personaName={selectedPersona.name} onSendSuggestion={handleSend} />
         ) : (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-[720px] mx-auto">
