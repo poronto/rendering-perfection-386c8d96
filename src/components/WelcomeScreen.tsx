@@ -16,20 +16,17 @@ export function WelcomeScreen({ personaName, onSendSuggestion }: WelcomeScreenPr
         className="text-center space-y-4"
         style={{ animation: 'fade-up 0.6s cubic-bezier(0.16,1,0.3,1) 0.1s both' }}
       >
-        <h1 className="text-lg font-bold tracking-widest uppercase text-primary">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-widest uppercase text-primary">
           VERSACE22 ai
         </h1>
         <h2
-          className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight leading-tight"
+          className="text-lg sm:text-xl font-semibold text-foreground tracking-tight leading-tight"
           style={{ textWrap: 'balance' } as React.CSSProperties}
         >
           World's smartest AIs,
           <br />
           <span className="text-primary">side-by-side</span> with you
         </h2>
-        <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
-          Ask {personaName} anything. Choose your persona, start a conversation, and get intelligent responses.
-        </p>
       </div>
 
       <div
