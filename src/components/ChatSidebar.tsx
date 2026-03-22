@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X, Menu } from 'lucide-react';
+import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X } from 'lucide-react';
 import { Conversation, Persona } from '@/lib/types';
+import { toast } from 'sonner';
 
 interface ChatSidebarProps {
   conversations: Conversation[];
@@ -14,11 +15,11 @@ interface ChatSidebarProps {
 }
 
 const navItems = [
-  { icon: MessageCircle, label: 'Chat', active: true },
-  { icon: Trophy, label: 'Leaderboard', badge: 'BETA' },
-  { icon: User, label: 'Profile' },
-  { icon: Gift, label: 'Refer for rewards' },
-  { icon: Globe, label: 'Find us', expandable: true },
+  { icon: MessageCircle, label: 'Chat', action: 'chat' },
+  { icon: Trophy, label: 'Leaderboard', badge: 'BETA', action: 'leaderboard' },
+  { icon: User, label: 'Profile', action: 'profile' },
+  { icon: Gift, label: 'Refer for rewards', action: 'refer' },
+  { icon: Globe, label: 'Find us', expandable: true, action: 'findus' },
 ];
 
 export function ChatSidebar({

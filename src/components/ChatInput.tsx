@@ -126,29 +126,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         )}
 
         <div className="flex items-center justify-between px-3 pb-3">
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={handleChooseModel}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
-                         text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {isAutoMode ? 'Choose models' : selectedModel}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleToggleAuto}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors
-                ${isAutoMode
-                  ? 'bg-primary/15 text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-            >
-              Auto
-            </button>
-          </div>
+          <div className="flex items-center gap-1.5" />
 
           <div className="flex items-center gap-1.5">
             <button
