@@ -18,4 +18,13 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    outDir: "wordpress-assets",
+    rollupOptions: {
+      output: {
+        entryFileNames: "Assets/index.js",
+        assetFileNames: "Assets/index.css",
+      },
+    },
+  },
 }));
