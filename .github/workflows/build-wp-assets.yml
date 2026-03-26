@@ -34,3 +34,4 @@ jobs:
           path: |
             wp-export/index.js
             wp-export/index.css
+            wp-export/versace22-enqueue.php
