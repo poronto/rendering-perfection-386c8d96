@@ -12,36 +12,40 @@ if (!defined('ABSPATH')) {
 }
 
 // Add the chat container div to the footer
-function versace22_render_chat_container() {
-    echo '<div id="versace22-chat-root" style="position:fixed;bottom:0;right:0;z-index:99999;width:100%;height:100vh;pointer-events:none;"></div>';
+if (!function_exists('versace22_render_chat_container')) {
+    function versace22_render_chat_container() {
+        echo '<div id="versace22-chat-root" style="position:fixed;top:0;left:0;z-index:99999;width:100%;height:100dvh;"></div>';
+    }
+    add_action('wp_footer', 'versace22_render_chat_container');
 }
-add_action('wp_footer', 'versace22_render_chat_container');
 
 // Enqueue the scoped JS and CSS
-function versace22_enqueue_chat_assets() {
-    $plugin_url = plugin_dir_url(__FILE__);
-    $plugin_path = plugin_dir_path(__FILE__);
+if (!function_exists('versace22_enqueue_chat_assets')) {
+    function versace22_enqueue_chat_assets() {
+        $plugin_url = plugin_dir_url(__FILE__);
+        $plugin_path = plugin_dir_path(__FILE__);
 
-    $css_file = $plugin_path . 'Assets/index.css';
-    $js_file = $plugin_path . 'Assets/index.js';
+        $css_file = $plugin_path . 'Assets/index.css';
+        $js_file = $plugin_path . 'Assets/index.js';
 
-    if (file_exists($css_file)) {
-        wp_enqueue_style(
-            'versace22-chat-style',
-            $plugin_url . 'Assets/index.css',
-            array(),
-            filemtime($css_file)
-        );
+        if (file_exists($css_file)) {
+            wp_enqueue_style(
+                'versace22-chat-style',
+                $plugin_url . 'Assets/index.css',
+                array(),
+                filemtime($css_file)
+            );
+        }
+
+        if (file_exists($js_file)) {
+            wp_enqueue_script(
+                'versace22-chat-script',
+                $plugin_url . 'Assets/index.js',
+                array(),
+                filemtime($js_file),
+                true
+            );
+        }
     }
-
-    if (file_exists($js_file)) {
-        wp_enqueue_script(
-            'versace22-chat-script',
-            $plugin_url . 'Assets/index.js',
-            array(),
-            filemtime($js_file),
-            true
-        );
-    }
+    add_action('wp_enqueue_scripts', 'versace22_enqueue_chat_assets');
 }
-add_action('wp_enqueue_scripts', 'versace22_enqueue_chat_assets');

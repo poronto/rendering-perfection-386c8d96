@@ -16,7 +16,7 @@ export default defineConfig({
       input: path.resolve(__dirname, "src/wp-main.tsx"),
       output: {
         entryFileNames: "Assets/index.js",
-        assetFileNames: "Assets/[name][extname]",
+        assetFileNames: "Assets/index[extname]",
       },
     },
   },

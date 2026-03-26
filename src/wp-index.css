@@ -1,6 +1,7 @@
-/* WordPress-scoped styles — NO @tailwind base to avoid global resets */
+/* WordPress entry – includes Tailwind base so utilities work correctly */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -39,14 +40,14 @@
   --chat-input-bg: 15 10% 13%;
   --orange-glow: 22 90% 50%;
 
-  /* Apply base styles to our container only */
+  /* Base styles for our container */
   background-color: hsl(15 12% 7%);
   color: hsl(30 25% 88%);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
-  box-sizing: border-box;
+  pointer-events: auto;
 }
 
 #versace22-chat-root *,
