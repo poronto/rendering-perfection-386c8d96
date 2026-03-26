@@ -25,6 +25,7 @@ jobs:
           mkdir -p wp-export
           cp wordpress-assets/Assets/index.js wp-export/index.js
           find wordpress-assets/Assets -name "*.css" -exec cp {} wp-export/index.css \;
+          cp versace22-enqueue.php wp-export/versace22-enqueue.php
 
       - name: Upload WordPress files
         uses: actions/upload-artifact@v4
