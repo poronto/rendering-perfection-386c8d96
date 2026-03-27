@@ -6,7 +6,7 @@ import { ChatMessages } from '@/components/ChatMessages';
 import { PersonaSelector } from '@/components/PersonaSelector';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { DEFAULT_PERSONAS, SAMPLE_CONVERSATIONS, Message, Conversation, Persona } from '@/lib/types';
-import { isWordPress, sendMessageToWP } from '@/lib/wp-api';
+import { sendMessageToWP } from '@/lib/wp-api';
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -75,19 +75,12 @@ const Index = () => {
       setActiveConvId(newConv.id);
     }
 
-    // Get AI response — real API in WordPress, simulated in preview
+    // Send message to WordPress plugin backend
     setIsTyping(true);
 
     let replyContent: string;
     try {
-      if (isWordPress()) {
-        // Call the real WordPress plugin backend
-        replyContent = await sendMessageToWP(text);
-      } else {
-        // Simulated response for Lovable preview only
-        await new Promise(r => setTimeout(r, 1200 + Math.random() * 800));
-        replyContent = getSimulatedResponse(text, selectedPersona);
-      }
+      replyContent = await sendMessageToWP(text);
     } catch (error) {
       console.error('Chat API error:', error);
       replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please check your API settings in WordPress admin.`;
@@ -160,26 +153,5 @@ const Index = () => {
     </div>
   );
 };
-
-function getSimulatedResponse(input: string, persona: Persona): string {
-  const responses: Record<string, string[]> = {
-    'Dr. Mark': [
-      `In my years of practice, I've seen many patients with similar concerns. Let me share some insights about "${input.slice(0, 30)}...".\n\nFirst, it's important to understand the underlying factors. I'd recommend starting with a thorough evaluation and we can discuss the best approach for your situation.`,
-      `That's a great question. Based on my clinical experience, I'd approach this systematically. Let me break it down for you step by step.`,
-    ],
-    'General Assistant': [
-      `I'd be happy to help with that! Here's what I can tell you about "${input.slice(0, 30)}...":\n\n1. Let's start with the fundamentals\n2. Then we can explore the details\n3. Finally, I'll provide actionable next steps\n\nWould you like me to elaborate on any of these points?`,
-    ],
-    'Code Wizard': [
-      `Great question! Let me break down the technical approach:\n\n\`\`\`\n// Here's a clean solution\nfunction solve() {\n  // Implementation details\n  return result;\n}\n\`\`\`\n\nThe key considerations here are performance and maintainability. Want me to dive deeper?`,
-    ],
-    'Creative Writer': [
-      `What a fascinating prompt! Let me paint a picture for you...\n\nThe words flow like a river of consciousness, each sentence building upon the last, creating a tapestry of meaning that speaks to the heart of your question.`,
-    ],
-  };
-
-  const pool = responses[persona.name] || responses['General Assistant'];
-  return pool[Math.floor(Math.random() * pool.length)];
-}
 
 export default Index;
