@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Menu } from 'lucide-react';
-import { ChatSidebar } from '@/components/ChatSidebar';
+import { ChatSidebar, SidebarView } from '@/components/ChatSidebar';
 import { ChatInput } from '@/components/ChatInput';
 import { ChatMessages } from '@/components/ChatMessages';
 import { PersonaSelector } from '@/components/PersonaSelector';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
+import { LeaderboardView, ProfileView, ReferView } from '@/components/SidebarViews';
 import { DEFAULT_PERSONAS, SAMPLE_CONVERSATIONS, Message, Conversation, Persona } from '@/lib/types';
 import { sendMessageToWP } from '@/lib/wp-api';
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeView, setActiveView] = useState<SidebarView>('chat');
   const [personas] = useState<Persona[]>(DEFAULT_PERSONAS);
   const [selectedPersona, setSelectedPersona] = useState<Persona>(DEFAULT_PERSONAS[0]);
   const [conversations, setConversations] = useState<Conversation[]>(SAMPLE_CONVERSATIONS);
@@ -114,9 +116,11 @@ const Index = () => {
         conversations={conversations}
         personas={personas}
         activeConversationId={activeConvId}
+        activeView={activeView}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
         onDeleteConversation={handleDeleteConversation}
+        onViewChange={(view) => { setActiveView(view); setSidebarOpen(false); }}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -133,22 +137,32 @@ const Index = () => {
           </button>
         </header>
 
-        {/* Messages or welcome */}
-        {currentMessages.length === 0 ? (
-          <WelcomeScreen personaName={selectedPersona.name} onSendSuggestion={handleSend} />
+        {/* View content */}
+        {activeView === 'leaderboard' ? (
+          <LeaderboardView onBackToChat={() => setActiveView('chat')} />
+        ) : activeView === 'profile' ? (
+          <ProfileView onBackToChat={() => setActiveView('chat')} />
+        ) : activeView === 'refer' ? (
+          <ReferView onBackToChat={() => setActiveView('chat')} />
         ) : (
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-[720px] mx-auto">
-              <ChatMessages messages={currentMessages} isTyping={isTyping} />
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-        )}
+          <>
+            {currentMessages.length === 0 ? (
+              <WelcomeScreen personaName={selectedPersona.name} onSendSuggestion={handleSend} />
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                <div className="max-w-[720px] mx-auto">
+                  <ChatMessages messages={currentMessages} isTyping={isTyping} />
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
+            )}
 
-        {/* Input area */}
-        <div className="shrink-0 pb-4 pt-2">
-          <ChatInput onSend={handleSend} disabled={isTyping} />
-        </div>
+            {/* Input area */}
+            <div className="shrink-0 pb-4 pt-2">
+              <ChatInput onSend={handleSend} disabled={isTyping} />
+            </div>
+          </>
+        )}
       </main>
     </div>
   );
