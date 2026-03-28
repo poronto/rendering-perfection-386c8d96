@@ -177,9 +177,14 @@ export function ChatSidebar({
         <div className="p-3 border-t border-sidebar-border">
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-primary-foreground">
-              V
+              {userInitial}
             </div>
-            <span className="text-sm font-medium text-foreground">Versace</span>
+            <span className="text-sm font-medium text-foreground flex-1">{userName}</span>
+            {onSignOut && (
+              <button onClick={onSignOut} className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors" title="Sign out">
+                <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            )}
           </div>
         </div>
       </aside>
