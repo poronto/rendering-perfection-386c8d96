@@ -3,13 +3,17 @@ import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X 
 import { Conversation, Persona } from '@/lib/types';
 import { toast } from 'sonner';
 
+export type SidebarView = 'chat' | 'leaderboard' | 'profile' | 'refer';
+
 interface ChatSidebarProps {
   conversations: Conversation[];
   personas: Persona[];
   activeConversationId: string | null;
+  activeView: SidebarView;
   onSelectConversation: (id: string) => void;
   onNewConversation: () => void;
   onDeleteConversation: (id: string) => void;
+  onViewChange: (view: SidebarView) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -19,20 +23,21 @@ const navItems = [
   { icon: Trophy, label: 'Leaderboard', badge: 'BETA', action: 'leaderboard' },
   { icon: User, label: 'Profile', action: 'profile' },
   { icon: Gift, label: 'Refer for rewards', action: 'refer' },
-  { icon: Globe, label: 'Find us', expandable: true, action: 'findus' },
+  { icon: Globe, label: 'Contact us', expandable: true, action: 'findus' },
 ];
 
 export function ChatSidebar({
   conversations,
   activeConversationId,
+  activeView,
   onSelectConversation,
   onNewConversation,
   onDeleteConversation,
+  onViewChange,
   isOpen,
   onClose,
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeNav, setActiveNav] = useState('chat');
   const [findUsOpen, setFindUsOpen] = useState(false);
 
   const filtered = conversations.filter(c =>
@@ -44,14 +49,12 @@ export function ChatSidebar({
       setFindUsOpen(prev => !prev);
       return;
     }
-    setActiveNav(action);
-    if (action === 'leaderboard') {
-      toast('Leaderboard coming soon!');
-    } else if (action === 'profile') {
-      toast('Profile coming soon!');
-    } else if (action === 'refer') {
-      toast('Referral rewards coming soon!');
-    }
+    onViewChange(action as SidebarView);
+    setSidebarOpen(false);
+  };
+
+  const setSidebarOpen = (_open: boolean) => {
+    if (!_open) onClose();
   };
 
   return (
@@ -93,7 +96,7 @@ export function ChatSidebar({
               className={`
                 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
                 transition-all duration-150
-                ${activeNav === item.action
+                ${activeView === item.action
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                 }
@@ -111,6 +114,7 @@ export function ChatSidebar({
           ))}
           {findUsOpen && (
             <div className="pl-10 space-y-1 py-1">
+              <a href="https://wa.me/12262272288" target="_blank" rel="noopener noreferrer" className="block px-3 py-1.5 text-sm text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50 rounded-lg transition-colors">💬 WhatsApp</a>
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="block px-3 py-1.5 text-sm text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50 rounded-lg transition-colors">Twitter</a>
               <a href="https://discord.com" target="_blank" rel="noopener noreferrer" className="block px-3 py-1.5 text-sm text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50 rounded-lg transition-colors">Discord</a>
             </div>
