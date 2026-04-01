@@ -63,7 +63,10 @@ const Index = () => {
     }
   };
 
-  const handleSend = async (text: string) => {
+  const handleSend = async (
+    text: string,
+    attachment?: { url: string; type: string; data?: string } | null
+  ) => {
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -76,14 +79,12 @@ const Index = () => {
 
     let convId = activeConvId;
 
-    // Create conversation in DB if new
     if (!convId) {
       const title = text.slice(0, 40) + (text.length > 40 ? '...' : '');
       convId = await createConversation(title, selectedPersona.id);
       if (convId) setActiveConvId(convId);
     }
 
-    // Save user message
     if (convId) {
       await saveMessage(convId, 'user', text);
     }
@@ -92,7 +93,7 @@ const Index = () => {
 
     let replyContent: string;
     try {
-      replyContent = await sendMessageToWP(text);
+      replyContent = await sendMessageToWP(text, attachment);
     } catch (error) {
       console.error('Chat API error:', error);
       replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please check your API settings in WordPress admin.`;
@@ -110,7 +111,6 @@ const Index = () => {
     setCurrentMessages(updatedMessages);
     setIsTyping(false);
 
-    // Save AI message
     if (convId) {
       await saveMessage(convId, 'assistant', replyContent, selectedPersona.id);
     }
@@ -118,6 +118,7 @@ const Index = () => {
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
   const initials = displayName.charAt(0).toUpperCase();
+  const avatarUrl = profile?.avatar_url || undefined;
 
   return (
     <div className="flex h-dvh bg-background overflow-hidden">
@@ -134,6 +135,7 @@ const Index = () => {
         onClose={() => setSidebarOpen(false)}
         userName={displayName}
         userInitial={initials}
+        avatarUrl={avatarUrl}
         onSignOut={signOut}
       />
 

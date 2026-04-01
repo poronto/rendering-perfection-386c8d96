@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -18,7 +18,14 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success('Password reset email sent! Check your inbox.');
+        setMode('login');
+      } else if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success('Welcome back!');
@@ -33,7 +40,7 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success('Account created! Check your email to verify.');
+        toast.success('Account created! You can now sign in.');
       }
     } catch (error: any) {
       toast.error(error.message || 'Authentication failed');
@@ -53,12 +60,12 @@ const Auth = () => {
             VERSACE22 AI
           </h1>
           <p className="text-sm text-muted-foreground">
-            {isLogin ? 'Sign in to your account' : 'Create your account'}
+            {mode === 'login' ? 'Sign in to your account' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
+          {mode === 'signup' && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Display Name</label>
               <Input
@@ -83,31 +90,59 @@ const Auth = () => {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Password</label>
-            <Input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="bg-card border-border"
-            />
-          </div>
+          {mode !== 'forgot' && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-foreground">Password</label>
+                {mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => setMode('forgot')}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="bg-card border-border"
+              />
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+            {loading
+              ? 'Please wait...'
+              : mode === 'login'
+              ? 'Sign In'
+              : mode === 'signup'
+              ? 'Create Account'
+              : 'Send Reset Link'}
           </Button>
         </form>
 
-        <div className="text-center">
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-sm text-muted-foreground hover:text-primary transition-colors"
-          >
-            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-          </button>
+        <div className="text-center space-y-2">
+          {mode === 'forgot' ? (
+            <button
+              onClick={() => setMode('login')}
+              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              Back to Sign In
+            </button>
+          ) : (
+            <button
+              onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            </button>
+          )}
         </div>
       </div>
     </div>
