@@ -18,6 +18,7 @@ interface ChatSidebarProps {
   onClose: () => void;
   userName?: string;
   userInitial?: string;
+  avatarUrl?: string;
   onSignOut?: () => void;
 }
 
@@ -41,6 +42,7 @@ export function ChatSidebar({
   onClose,
   userName = 'User',
   userInitial = 'U',
+  avatarUrl,
   onSignOut,
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -176,10 +178,14 @@ export function ChatSidebar({
         {/* User */}
         <div className="p-3 border-t border-sidebar-border">
           <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-primary-foreground">
-              {userInitial}
-            </div>
-            <span className="text-sm font-medium text-foreground flex-1">{userName}</span>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={userName} className="w-8 h-8 rounded-full object-cover shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-primary-foreground shrink-0">
+                {userInitial}
+              </div>
+            )}
+            <span className="text-sm font-medium text-foreground flex-1 truncate">{userName}</span>
             {onSignOut && (
               <button onClick={onSignOut} className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors" title="Sign out">
                 <LogOut className="w-3.5 h-3.5 text-muted-foreground" />

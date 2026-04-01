@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Trophy, User, Gift, ArrowLeft, Save, X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Trophy, User, Gift, ArrowLeft, Save, X, Camera } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,9 +60,12 @@ export function ProfileView({ onBackToChat }: ViewProps) {
   const [editing, setEditing] = useState(false);
   const [newName, setNewName] = useState(profile?.display_name || '');
   const [saving, setSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
   const initials = displayName.charAt(0).toUpperCase();
+  const avatarUrl = profile?.avatar_url;
   const memberSince = user?.created_at
     ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : '—';
@@ -80,11 +83,56 @@ export function ProfileView({ onBackToChat }: ViewProps) {
       toast.error('Failed to update profile');
     } else {
       toast.success('Profile updated!');
-      // Refresh the page to pick up new profile data
       window.location.reload();
     }
     setSaving(false);
     setEditing(false);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+
+    setAvatarUploading(true);
+    const ext = file.name.split('.').pop() || 'jpg';
+    const filePath = `${user.id}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      toast.error('Failed to upload avatar');
+      setAvatarUploading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('user_id', user.id);
+
+    if (updateError) {
+      toast.error('Failed to save avatar');
+    } else {
+      toast.success('Avatar updated!');
+      window.location.reload();
+    }
+    setAvatarUploading(false);
   };
 
   return (
@@ -92,11 +140,36 @@ export function ProfileView({ onBackToChat }: ViewProps) {
       <BackButton onClick={onBackToChat} />
       <div className="w-full max-w-md space-y-6" style={{ animation: 'fade-up 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
         <div className="text-center space-y-3">
-          <div className="w-20 h-20 rounded-full bg-primary mx-auto flex items-center justify-center">
-            <span className="text-3xl font-bold text-primary-foreground">{initials}</span>
+          <div className="relative w-20 h-20 mx-auto group">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="w-20 h-20 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center">
+                <span className="text-3xl font-bold text-primary-foreground">{initials}</span>
+              </div>
+            )}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+            >
+              <Camera className="w-5 h-5 text-foreground" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
           </div>
           <h2 className="text-2xl font-bold text-foreground">Your Profile</h2>
           <p className="text-sm text-muted-foreground">{user?.email}</p>
+          {avatarUploading && <p className="text-xs text-primary animate-pulse">Uploading avatar...</p>}
         </div>
 
         {editing ? (

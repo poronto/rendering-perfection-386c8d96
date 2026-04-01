@@ -11,6 +11,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import "./wp-index.css";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const WPApp = () => (
         <MemoryRouter>
           <Routes>
             <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
           </Routes>
         </MemoryRouter>
