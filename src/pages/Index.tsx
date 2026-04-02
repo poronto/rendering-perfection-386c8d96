@@ -6,19 +6,26 @@ import { ChatMessages } from '@/components/ChatMessages';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { LeaderboardView, ProfileView, ReferView } from '@/components/SidebarViews';
 import { DEFAULT_PERSONAS, Message, Persona } from '@/lib/types';
-import { sendMessageToWP } from '@/lib/wp-api';
+import { sendMessageToWP, isWordPress } from '@/lib/wp-api';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
+import { useWPConversations } from '@/hooks/useWPConversations';
 
 const Index = () => {
   const { user, signOut, profile } = useAuth();
+  const wpMode = isWordPress();
+
+  // Use WP conversations hook in WordPress mode, Supabase otherwise
+  const supaConv = useConversations();
+  const wpConv = useWPConversations();
   const {
     conversations,
     loadMessages,
     createConversation,
     saveMessage,
     deleteConversation,
-  } = useConversations();
+    fetchConversations,
+  } = wpMode ? wpConv : supaConv;
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState<SidebarView>('chat');
@@ -80,13 +87,13 @@ const Index = () => {
 
     let convId = activeConvId;
 
-    if (!convId) {
+    if (!convId && !wpMode) {
       const title = text.slice(0, 40) + (text.length > 40 ? '...' : '');
       convId = await createConversation(title, selectedPersona.id);
       if (convId) setActiveConvId(convId);
     }
 
-    if (convId) {
+    if (convId && !wpMode) {
       await saveMessage(convId, 'user', text);
     }
 
@@ -115,11 +122,15 @@ const Index = () => {
 
     // Trigger streaming effect for the new AI message
     setStreamingMessageId(aiMsgId);
-    // Clear streaming after a reasonable time
     setTimeout(() => setStreamingMessageId(null), Math.max(replyContent.length * 15, 3000));
 
-    if (convId) {
+    if (convId && !wpMode) {
       await saveMessage(convId, 'assistant', replyContent, selectedPersona.id);
+    }
+
+    // In WP mode, refresh conversation list after a new message
+    if (wpMode) {
+      setTimeout(() => fetchConversations(), 500);
     }
   };
 

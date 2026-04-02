@@ -2,6 +2,8 @@ import { useState, useRef } from 'react';
 import { Trophy, User, Gift, ArrowLeft, Save, X, Camera, Copy, Check, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
+import { useWPConversations } from '@/hooks/useWPConversations';
+import { isWordPress } from '@/lib/wp-api';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -10,12 +12,19 @@ interface ViewProps {
   onBackToChat: () => void;
 }
 
-export function LeaderboardView({ onBackToChat }: ViewProps) {
+function useViewData() {
   const { profile, user } = useAuth();
-  const { conversations } = useConversations();
-  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'You';
+  const wpMode = isWordPress();
+  const supaConv = useConversations();
+  const wpConv = useWPConversations();
+  const conversations = wpMode ? wpConv.conversations : supaConv.conversations;
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
+  return { profile, user, conversations, displayName, wpMode };
+}
 
-  // Calculate real points: 10 per conversation
+export function LeaderboardView({ onBackToChat }: ViewProps) {
+  const { conversations, displayName } = useViewData();
+
   const userScore = conversations.length * 10;
 
   const leaders = [
@@ -26,7 +35,6 @@ export function LeaderboardView({ onBackToChat }: ViewProps) {
     { rank: 5, name: displayName, score: userScore, highlight: true },
   ];
 
-  // Sort by score desc and re-rank
   const sorted = [...leaders].sort((a, b) => b.score - a.score).map((l, i) => ({
     ...l,
     rank: i + 1,
@@ -43,7 +51,6 @@ export function LeaderboardView({ onBackToChat }: ViewProps) {
           <p className="text-sm text-muted-foreground">Top community members this month</p>
         </div>
 
-        {/* User stats card */}
         <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Your Activity</p>
           <p className="text-2xl font-bold text-primary">{userScore} pts</p>
@@ -73,15 +80,13 @@ export function LeaderboardView({ onBackToChat }: ViewProps) {
 }
 
 export function ProfileView({ onBackToChat }: ViewProps) {
-  const { user, profile } = useAuth();
-  const { conversations } = useConversations();
+  const { user, profile, conversations, displayName, wpMode } = useViewData();
   const [editing, setEditing] = useState(false);
   const [newName, setNewName] = useState(profile?.display_name || '');
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
   const initials = displayName.charAt(0).toUpperCase();
   const avatarUrl = profile?.avatar_url;
   const memberSince = user?.created_at
@@ -93,6 +98,15 @@ export function ProfileView({ onBackToChat }: ViewProps) {
   const handleSave = async () => {
     if (!user || !newName.trim()) return;
     setSaving(true);
+
+    if (wpMode) {
+      // In WP mode, profile editing isn't available server-side yet
+      toast.info('Profile editing is managed through your WordPress account settings.');
+      setSaving(false);
+      setEditing(false);
+      return;
+    }
+
     const { error } = await supabase
       .from('profiles')
       .update({ display_name: newName.trim() })
@@ -119,6 +133,11 @@ export function ProfileView({ onBackToChat }: ViewProps) {
 
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Image must be under 5MB');
+      return;
+    }
+
+    if (wpMode) {
+      toast.info('Avatar management is handled through your WordPress profile.');
       return;
     }
 
@@ -171,13 +190,15 @@ export function ProfileView({ onBackToChat }: ViewProps) {
                 <span className="text-3xl font-bold text-primary-foreground">{initials}</span>
               </div>
             )}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={avatarUploading}
-              className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-            >
-              <Camera className="w-5 h-5 text-foreground" />
-            </button>
+            {!wpMode && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+              >
+                <Camera className="w-5 h-5 text-foreground" />
+              </button>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -187,7 +208,7 @@ export function ProfileView({ onBackToChat }: ViewProps) {
             />
           </div>
           <h2 className="text-2xl font-bold text-foreground">Your Profile</h2>
-          <p className="text-sm text-muted-foreground">{user?.email}</p>
+          <p className="text-sm text-muted-foreground">{user?.email || displayName}</p>
           {avatarUploading && <p className="text-xs text-primary animate-pulse">Uploading avatar...</p>}
         </div>
 
@@ -223,7 +244,7 @@ export function ProfileView({ onBackToChat }: ViewProps) {
           <>
             <div className="space-y-3">
               <ProfileField label="Display Name" value={displayName} />
-              <ProfileField label="Email" value={user?.email || '—'} />
+              {user?.email && <ProfileField label="Email" value={user.email} />}
               <ProfileField label="Conversations" value={String(totalConversations)} />
               <ProfileField label="Points Earned" value={`${totalPoints} pts`} />
               <ProfileField label="Member Since" value={memberSince} />
@@ -251,8 +272,7 @@ function ProfileField({ label, value }: { label: string; value: string }) {
 }
 
 export function ReferView({ onBackToChat }: ViewProps) {
-  const { user } = useAuth();
-  const { conversations } = useConversations();
+  const { user, conversations } = useViewData();
   const [copied, setCopied] = useState(false);
 
   const referralCode = 'VERSACE-' + (user?.id?.substring(0, 6).toUpperCase() || 'GUEST');
