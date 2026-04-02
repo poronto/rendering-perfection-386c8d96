@@ -27,6 +27,16 @@ export function isWordPress(): boolean {
   return getWPConfig() !== null;
 }
 
+export function getWPPersonaId(): number {
+  return getWPConfig()?.personaId ?? 1;
+}
+
+export function getWPSessionId(): string {
+  return getWPConfig()?.sessionId ?? '';
+}
+
+// ===================== CHAT =====================
+
 export async function sendMessageToWP(
   message: string,
   attachment?: { url: string; type: string; data?: string } | null
@@ -66,6 +76,8 @@ export async function sendMessageToWP(
   return result.data.message;
 }
 
+// ===================== FILE UPLOAD =====================
+
 export async function uploadFileToWP(file: File): Promise<{
   file_url: string;
   file_name: string;
@@ -89,6 +101,8 @@ export async function uploadFileToWP(file: File): Promise<{
   return result.data;
 }
 
+// ===================== AUDIO TRANSCRIPTION =====================
+
 export async function transcribeAudioWP(audioBlob: Blob): Promise<string> {
   const config = getWPConfig();
   if (!config) throw new Error('WordPress config not available');
@@ -107,7 +121,22 @@ export async function transcribeAudioWP(audioBlob: Blob): Promise<string> {
   return result.data.text;
 }
 
-export async function getConversationsFromWP() {
+// ===================== CONVERSATIONS =====================
+
+export interface WPConversation {
+  id: number;
+  title: string;
+  token_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WPMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export async function getConversationsFromWP(): Promise<WPConversation[]> {
   const config = getWPConfig();
   if (!config) return [];
 
@@ -121,7 +150,11 @@ export async function getConversationsFromWP() {
   return result.success ? result.data.conversations : [];
 }
 
-export async function loadConversationFromWP(conversationId: number) {
+export async function loadConversationFromWP(conversationId: number): Promise<{
+  messages: WPMessage[];
+  session_id: string;
+  persona_id: number;
+} | null> {
   const config = getWPConfig();
   if (!config) return null;
 
@@ -135,7 +168,7 @@ export async function loadConversationFromWP(conversationId: number) {
   return result.success ? result.data : null;
 }
 
-export async function deleteConversationFromWP(conversationId: number) {
+export async function deleteConversationFromWP(conversationId: number): Promise<boolean> {
   const config = getWPConfig();
   if (!config) return false;
 
@@ -147,4 +180,50 @@ export async function deleteConversationFromWP(conversationId: number) {
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   const result = await response.json();
   return result.success;
+}
+
+// ===================== USER REGISTRATION =====================
+
+export async function registerUserWP(data: {
+  username: string;
+  email: string;
+  password: string;
+  display_name?: string;
+}): Promise<{ user_id: number; display_name: string }> {
+  const config = getWPConfig();
+  if (!config) throw new Error('WordPress config not available');
+
+  const formData = new FormData();
+  formData.append('action', 'aicpp_register_user');
+  formData.append('nonce', config.nonce);
+  formData.append('username', data.username);
+  formData.append('email', data.email);
+  formData.append('password', data.password);
+  if (data.display_name) formData.append('display_name', data.display_name);
+
+  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
+  if (!response.ok) throw new Error(`Registration error: ${response.status}`);
+
+  const result = await response.json();
+  if (!result.success) throw new Error(result.data?.message || 'Registration failed');
+
+  return result.data;
+}
+
+// ===================== WP USER INFO =====================
+
+/** Check if WP user is logged in (cookie-based, detected via localized data) */
+export function getWPUserInfo(): { isLoggedIn: boolean; displayName: string } {
+  const w = window as any;
+  if (w.versace22_chat?.user_logged_in) {
+    return {
+      isLoggedIn: true,
+      displayName: w.versace22_chat.user_display_name || 'User',
+    };
+  }
+  // If we're in WP but not logged in, guests can still chat
+  if (w.versace22_chat) {
+    return { isLoggedIn: false, displayName: 'Guest' };
+  }
+  return { isLoggedIn: false, displayName: 'Guest' };
 }
