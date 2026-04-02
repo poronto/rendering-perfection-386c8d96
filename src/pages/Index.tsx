@@ -27,6 +27,7 @@ const Index = () => {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -99,8 +100,9 @@ const Index = () => {
       replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please check your API settings in WordPress admin.`;
     }
 
+    const aiMsgId = crypto.randomUUID();
     const aiMsg: Message = {
-      id: crypto.randomUUID(),
+      id: aiMsgId,
       role: 'assistant',
       content: replyContent,
       timestamp: new Date(),
@@ -110,6 +112,11 @@ const Index = () => {
     const updatedMessages = [...newMessages, aiMsg];
     setCurrentMessages(updatedMessages);
     setIsTyping(false);
+
+    // Trigger streaming effect for the new AI message
+    setStreamingMessageId(aiMsgId);
+    // Clear streaming after a reasonable time
+    setTimeout(() => setStreamingMessageId(null), Math.max(replyContent.length * 15, 3000));
 
     if (convId) {
       await saveMessage(convId, 'assistant', replyContent, selectedPersona.id);
@@ -170,7 +177,11 @@ const Index = () => {
             ) : (
               <div className="flex-1 overflow-y-auto">
                 <div className="max-w-[720px] mx-auto">
-                  <ChatMessages messages={currentMessages} isTyping={isTyping} />
+                  <ChatMessages
+                    messages={currentMessages}
+                    isTyping={isTyping}
+                    streamingMessageId={streamingMessageId}
+                  />
                   <div ref={messagesEndRef} />
                 </div>
               </div>

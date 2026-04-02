@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Trophy, User, Gift, ArrowLeft, Save, X, Camera } from 'lucide-react';
+import { Trophy, User, Gift, ArrowLeft, Save, X, Camera, Copy, Check, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,16 +11,27 @@ interface ViewProps {
 }
 
 export function LeaderboardView({ onBackToChat }: ViewProps) {
-  const { profile } = useAuth();
-  const displayName = profile?.display_name || 'You';
+  const { profile, user } = useAuth();
+  const { conversations } = useConversations();
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'You';
+
+  // Calculate real points: 10 per conversation
+  const userScore = conversations.length * 10;
 
   const leaders = [
     { rank: 1, name: 'Alex M.', score: 2840, badge: '🥇' },
     { rank: 2, name: 'Sarah K.', score: 2510, badge: '🥈' },
     { rank: 3, name: 'James L.', score: 2200, badge: '🥉' },
     { rank: 4, name: 'Mia R.', score: 1980 },
-    { rank: 5, name: displayName, score: 450, highlight: true },
+    { rank: 5, name: displayName, score: userScore, highlight: true },
   ];
+
+  // Sort by score desc and re-rank
+  const sorted = [...leaders].sort((a, b) => b.score - a.score).map((l, i) => ({
+    ...l,
+    rank: i + 1,
+    badge: i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : undefined,
+  }));
 
   return (
     <div className="flex-1 flex flex-col items-center px-4 py-8 overflow-y-auto">
@@ -30,25 +41,32 @@ export function LeaderboardView({ onBackToChat }: ViewProps) {
           <Trophy className="w-10 h-10 text-primary mx-auto" />
           <h2 className="text-2xl font-bold text-foreground">Leaderboard</h2>
           <p className="text-sm text-muted-foreground">Top community members this month</p>
-          <span className="inline-block text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-primary/20 text-primary">BETA</span>
         </div>
+
+        {/* User stats card */}
+        <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Your Activity</p>
+          <p className="text-2xl font-bold text-primary">{userScore} pts</p>
+          <p className="text-xs text-muted-foreground">{conversations.length} conversations · {conversations.length * 10} points earned</p>
+        </div>
+
         <div className="space-y-2">
-          {leaders.map((l) => (
+          {sorted.map((l) => (
             <div
-              key={l.rank}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${
+              key={l.name}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 ${
                 l.highlight
-                  ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'bg-card border-border'
+                  ? 'bg-primary/10 border-primary/30 text-primary scale-[1.02]'
+                  : 'bg-card border-border hover:border-border/80'
               }`}
             >
               <span className="text-lg font-bold w-8 text-center">{l.badge || `#${l.rank}`}</span>
-              <span className="flex-1 font-medium text-foreground">{l.name}</span>
+              <span className="flex-1 font-medium text-foreground">{l.name} {l.highlight && '(you)'}</span>
               <span className="text-sm font-semibold text-muted-foreground">{l.score.toLocaleString()} pts</span>
             </div>
           ))}
         </div>
-        <p className="text-xs text-center text-muted-foreground">Earn points by chatting and referring friends</p>
+        <p className="text-xs text-center text-muted-foreground">Earn 10 points per conversation · 50 points per referral</p>
       </div>
     </div>
   );
@@ -70,6 +88,7 @@ export function ProfileView({ onBackToChat }: ViewProps) {
     ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : '—';
   const totalConversations = conversations.length;
+  const totalPoints = totalConversations * 10;
 
   const handleSave = async () => {
     if (!user || !newName.trim()) return;
@@ -206,6 +225,7 @@ export function ProfileView({ onBackToChat }: ViewProps) {
               <ProfileField label="Display Name" value={displayName} />
               <ProfileField label="Email" value={user?.email || '—'} />
               <ProfileField label="Conversations" value={String(totalConversations)} />
+              <ProfileField label="Points Earned" value={`${totalPoints} pts`} />
               <ProfileField label="Member Since" value={memberSince} />
             </div>
             <button
@@ -232,11 +252,31 @@ function ProfileField({ label, value }: { label: string; value: string }) {
 
 export function ReferView({ onBackToChat }: ViewProps) {
   const { user } = useAuth();
-  const referralCode = 'VERSACE-' + (user?.id?.substring(0, 6).toUpperCase() || 'GUEST');
+  const { conversations } = useConversations();
+  const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard?.writeText(referralCode);
-    toast.success('Referral code copied!');
+  const referralCode = 'VERSACE-' + (user?.id?.substring(0, 6).toUpperCase() || 'GUEST');
+  const referralLink = `${window.location.origin}?ref=${referralCode}`;
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopied(true);
+    toast.success('Copied to clipboard!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join me on VERSACE22 AI',
+          text: `Chat with AI personas! Use my referral code: ${referralCode}`,
+          url: referralLink,
+        });
+      } catch {}
+    } else {
+      handleCopy(referralLink);
+    }
   };
 
   return (
@@ -246,35 +286,56 @@ export function ReferView({ onBackToChat }: ViewProps) {
         <div className="text-center space-y-2">
           <Gift className="w-10 h-10 text-primary mx-auto" />
           <h2 className="text-2xl font-bold text-foreground">Refer & Earn</h2>
-          <p className="text-sm text-muted-foreground">Share with friends and earn rewards for every signup</p>
+          <p className="text-sm text-muted-foreground">Share with friends and earn 50 points for every signup</p>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-5 text-center space-y-3">
           <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Your Referral Code</p>
           <p className="text-xl font-bold text-primary tracking-widest">{referralCode}</p>
-          <button
-            onClick={handleCopy}
-            className="px-5 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
-          >
-            Copy Code
-          </button>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => handleCopy(referralCode)}
+              className="px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center gap-1.5"
+            >
+              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? 'Copied!' : 'Copy Code'}
+            </button>
+            <button
+              onClick={handleShare}
+              className="px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center gap-1.5"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              Share
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3 text-center">
           <RewardStat label="Referred" value="0" />
-          <RewardStat label="Earned" value="0 pts" />
+          <RewardStat label="Earned" value={`${conversations.length * 10} pts`} />
           <RewardStat label="Reward" value="50 pts" subtitle="per invite" />
         </div>
 
-        <button
-          onClick={() => {
-            const url = `https://wa.me/?text=Join%20me%20on%20Versace22%20AI!%20Use%20code%20${referralCode}`;
-            window.open(url, '_blank');
-          }}
-          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-        >
-          Share via WhatsApp
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              const url = `https://wa.me/?text=${encodeURIComponent(`Join me on VERSACE22 AI! Use code ${referralCode}: ${referralLink}`)}`;
+              window.open(url, '_blank');
+            }}
+            className="w-full py-3 rounded-xl bg-[hsl(142,70%,35%)] text-primary-foreground font-semibold hover:brightness-110 transition-all flex items-center justify-center gap-2"
+          >
+            💬 Share via WhatsApp
+          </button>
+          <button
+            onClick={() => {
+              const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Chat with AI personas on VERSACE22 AI! Use code ${referralCode}`)}&url=${encodeURIComponent(referralLink)}`;
+              window.open(url, '_blank');
+            }}
+            className="w-full py-3 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-muted transition-colors flex items-center justify-center gap-2"
+          >
+            𝕏 Share on Twitter
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,11 +1,15 @@
+import { useState, useRef, useCallback } from 'react';
 import { Message } from '@/lib/types';
+import { MarkdownMessage } from './MarkdownMessage';
+import { StreamingMessage } from './StreamingMessage';
 
 interface ChatMessagesProps {
   messages: Message[];
   isTyping?: boolean;
+  streamingMessageId?: string | null;
 }
 
-export function ChatMessages({ messages, isTyping }: ChatMessagesProps) {
+export function ChatMessages({ messages, isTyping, streamingMessageId }: ChatMessagesProps) {
   if (messages.length === 0 && !isTyping) return null;
 
   return (
@@ -31,7 +35,13 @@ export function ChatMessages({ messages, isTyping }: ChatMessagesProps) {
                 : 'bg-chat-ai text-foreground rounded-bl-md'
               }`}
           >
-            <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.content}</p>
+            {msg.role === 'assistant' && msg.id === streamingMessageId ? (
+              <StreamingMessage content={msg.content} />
+            ) : msg.role === 'assistant' ? (
+              <MarkdownMessage content={msg.content} />
+            ) : (
+              <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.content}</p>
+            )}
           </div>
         </div>
       ))}
