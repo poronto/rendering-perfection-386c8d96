@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X, LogOut } from 'lucide-react';
+import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X, LogOut, Sun, Moon } from 'lucide-react';
 import { Conversation, Persona } from '@/lib/types';
+import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
 
 export type SidebarView = 'chat' | 'leaderboard' | 'profile' | 'refer';
