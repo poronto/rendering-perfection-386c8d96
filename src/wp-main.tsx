@@ -52,21 +52,23 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 
 const WPApp = () => (
   <QueryClientProvider client={queryClient}>
-    <WPAuthProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <MemoryRouter>
-            <Routes>
-              <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/" element={<WPProtectedRoute><Index /></WPProtectedRoute>} />
-            </Routes>
-          </MemoryRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </WPAuthProvider>
+    <ThemeProvider>
+      <WPAuthProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <MemoryRouter>
+              <Routes>
+                <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/" element={<WPProtectedRoute><Index /></WPProtectedRoute>} />
+              </Routes>
+            </MemoryRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </WPAuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
