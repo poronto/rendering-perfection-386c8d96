@@ -178,7 +178,16 @@ export function ChatSidebar({
         </div>
 
         {/* User */}
-        <div className="p-3 border-t border-sidebar-border">
+        <div className="p-3 border-t border-sidebar-border space-y-2">
+          <div className="flex items-center justify-between px-3">
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
+            </button>
+          </div>
           <div className="flex items-center gap-3 px-3 py-2">
             {avatarUrl ? (
               <img src={avatarUrl} alt={userName} className="w-8 h-8 rounded-full object-cover shrink-0" />
