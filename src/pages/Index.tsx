@@ -102,7 +102,7 @@ const Index = () => {
 
     let replyContent: string;
     try {
-      replyContent = await sendMessageToWP(text, attachment);
+      replyContent = await sendMessageToWP(text, attachment, model);
     } catch (error) {
       console.error('Chat API error:', error);
       replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please check your API settings in WordPress admin.`;
