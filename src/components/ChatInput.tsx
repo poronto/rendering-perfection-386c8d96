@@ -1,23 +1,10 @@
 import { useRef, useState } from 'react';
-import { ArrowUp, Lock, Plus, Mic, MicOff, Paperclip, X, ChevronDown } from 'lucide-react';
+import { ArrowUp, Lock, Plus, Mic, MicOff, Paperclip, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { uploadFileToWP, transcribeAudioWP, isWordPress } from '@/lib/wp-api';
 
-const MODELS = [
-  { label: 'GPT-4o', value: 'gpt-4o', group: 'OpenAI' },
-  { label: 'GPT-4o Mini', value: 'gpt-4o-mini', group: 'OpenAI' },
-  { label: 'GPT-4', value: 'gpt-4', group: 'OpenAI' },
-  { label: 'Claude Sonnet 4', value: 'claude-sonnet-4-20250514', group: 'Anthropic' },
-  { label: 'Claude 3.5 Sonnet', value: 'claude-3-5-sonnet-20241022', group: 'Anthropic' },
-  { label: 'Gemini 1.5 Pro', value: 'gemini-1.5-pro-latest', group: 'Google' },
-  { label: 'Gemini 1.5 Flash', value: 'gemini-1.5-flash-latest', group: 'Google' },
-  { label: 'DeepSeek Chat', value: 'deepseek-chat', group: 'DeepSeek' },
-  { label: 'Llama 3.1 70B', value: 'llama-3.1-70b-versatile', group: 'Groq' },
-  { label: 'Mistral Large', value: 'mistral-large-latest', group: 'Mistral' },
-];
-
 interface ChatInputProps {
-  onSend: (message: string, attachment?: { url: string; type: string; data?: string } | null, model?: string) => void;
+  onSend: (message: string, attachment?: { url: string; type: string; data?: string } | null) => void;
   disabled?: boolean;
 }
 
@@ -29,14 +16,11 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gpt-4o');
-  const [modelOpen, setModelOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const modelDropdownRef = useRef<HTMLDivElement>(null);
 
   const handleSend = () => {
     if (disabled || isUploading || isTranscribing) return;
@@ -54,7 +38,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       .filter(Boolean)
       .join('\n\n');
 
-    onSend(payload, uploadedAttachment, selectedModel);
+    onSend(payload, uploadedAttachment);
     setMessage('');
     setAttachedFile(null);
     setUploadedAttachment(null);
@@ -167,8 +151,6 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
   };
 
-  const currentModelLabel = MODELS.find(m => m.value === selectedModel)?.label || 'GPT-4o';
-
   return (
     <div className="w-full max-w-[720px] mx-auto px-4">
       <div
@@ -209,44 +191,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           </div>
         )}
 
-        <div className="flex items-center justify-between px-3 pb-3">
-          {/* Model selector */}
-          <div className="relative" ref={modelDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setModelOpen(prev => !prev)}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium
-                         text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              {currentModelLabel}
-              <ChevronDown className={`w-3 h-3 transition-transform ${modelOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {modelOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setModelOpen(false)} />
-                <div className="absolute bottom-full left-0 mb-1 z-50 w-56
-                                bg-popover border border-border rounded-xl shadow-xl
-                                max-h-64 overflow-y-auto py-1">
-                  {MODELS.map((m) => (
-                    <button
-                      key={m.value}
-                      onClick={() => { setSelectedModel(m.value); setModelOpen(false); }}
-                      className={`w-full text-left px-3 py-2 text-xs transition-colors
-                        ${m.value === selectedModel
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'text-foreground hover:bg-muted'
-                        }`}
-                    >
-                      <span className="font-medium">{m.label}</span>
-                      <span className="text-muted-foreground ml-1.5">· {m.group}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
+        <div className="flex items-center justify-end px-3 pb-3">
           <div className="flex items-center gap-1.5">
             <button
               type="button"
