@@ -50,6 +50,7 @@ export async function sendMessageToWP(
   formData.append('persona_id', String(config.personaId));
   formData.append('message', message);
   formData.append('session_id', config.sessionId);
+  
 
   if (attachment) {
     formData.append('has_attachment', '1');
@@ -74,114 +75,6 @@ export async function sendMessageToWP(
   }
 
   return result.data.message;
-}
-
-// ===================== MAIN CHARACTER CHAT =====================
-
-export async function sendMainChatToWP(
-  message: string,
-  sessionId: string,
-  attachment?: { url: string; type: string; data?: string } | null,
-): Promise<{ message: string; conversation_id?: number }> {
-  const config = getWPConfig();
-  if (!config) throw new Error('WordPress config not available');
-
-  const formData = new FormData();
-  formData.append('action', 'aicpp_chat_main');
-  formData.append('nonce', config.nonce);
-  formData.append('message', message);
-  formData.append('session_id', sessionId);
-
-  if (attachment) {
-    formData.append('has_attachment', '1');
-    formData.append('attachment_url', attachment.url);
-    formData.append('attachment_type', attachment.type);
-    if (attachment.data) formData.append('attachment_data', attachment.data);
-  }
-
-  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
-  if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
-  const result = await response.json();
-  if (!result.success) throw new Error(result.data?.message || 'Main chat request failed');
-
-  return result.data;
-}
-
-// ===================== PERSONA CHAT (with explicit persona_id) =====================
-
-export async function sendPersonaChatToWP(
-  message: string,
-  personaId: number,
-  sessionId: string,
-  attachment?: { url: string; type: string; data?: string } | null,
-): Promise<{ message: string; conversation_id?: number }> {
-  const config = getWPConfig();
-  if (!config) throw new Error('WordPress config not available');
-
-  const formData = new FormData();
-  formData.append('action', 'aicpp_chat');
-  formData.append('nonce', config.nonce);
-  formData.append('persona_id', String(personaId));
-  formData.append('message', message);
-  formData.append('session_id', sessionId);
-
-  if (attachment) {
-    formData.append('has_attachment', '1');
-    formData.append('attachment_url', attachment.url);
-    formData.append('attachment_type', attachment.type);
-    if (attachment.data) formData.append('attachment_data', attachment.data);
-  }
-
-  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
-  if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
-  const result = await response.json();
-  if (!result.success) throw new Error(result.data?.message || 'Chat request failed');
-
-  return result.data;
-}
-
-// ===================== GET MY PERSONAS (v12) =====================
-
-export interface WPPersonaInfo {
-  id: number;
-  name: string;
-  description: string;
-  avatar_initials: string;
-  avatar_color: string;
-  model: string;
-  visibility: 'public' | 'private';
-}
-
-export interface WPMainCharacter {
-  name: string;
-  description: string;
-  avatar_initials: string;
-  avatar_color: string;
-  model: string;
-}
-
-export async function getMyPersonasFromWP(): Promise<{
-  personas: WPPersonaInfo[];
-  main_character: WPMainCharacter | null;
-}> {
-  const config = getWPConfig();
-  if (!config) return { personas: [], main_character: null };
-
-  const formData = new FormData();
-  formData.append('action', 'aicpp_get_my_personas');
-  formData.append('nonce', config.nonce);
-
-  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
-  const result = await response.json();
-  if (result.success) {
-    return {
-      personas: result.data.personas || [],
-      main_character: result.data.main_character || null,
-    };
-  }
-  return { personas: [], main_character: null };
 }
 
 // ===================== FILE UPLOAD =====================
@@ -235,11 +128,6 @@ export interface WPConversation {
   id: number;
   title: string;
   token_count: number;
-  persona_id: number | null;
-  is_main_chat: number;
-  persona_name: string | null;
-  avatar_initials: string | null;
-  avatar_color: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -267,7 +155,6 @@ export async function loadConversationFromWP(conversationId: number): Promise<{
   messages: WPMessage[];
   session_id: string;
   persona_id: number;
-  is_main_chat: number;
 } | null> {
   const config = getWPConfig();
   if (!config) return null;
@@ -324,33 +211,6 @@ export async function registerUserWP(data: {
   return result.data;
 }
 
-// ===================== USER LOGIN (v12) =====================
-
-export async function loginUserWP(data: {
-  login: string;
-  password: string;
-}): Promise<{ user_id: number; display_name: string; message: string }> {
-  const config = getWPConfig();
-  if (!config) throw new Error('WordPress config not available');
-
-  const w = window as any;
-  const loginNonce = w.versace22_chat?.login_nonce || config.nonce;
-
-  const formData = new FormData();
-  formData.append('action', 'aicpp_login_user');
-  formData.append('nonce', loginNonce);
-  formData.append('login', data.login);
-  formData.append('password', data.password);
-
-  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
-  if (!response.ok) throw new Error(`Login error: ${response.status}`);
-
-  const result = await response.json();
-  if (!result.success) throw new Error(result.data?.message || 'Login failed');
-
-  return result.data;
-}
-
 // ===================== WP USER INFO =====================
 
 /** Check if WP user is logged in (cookie-based, detected via localized data) */
@@ -362,6 +222,7 @@ export function getWPUserInfo(): { isLoggedIn: boolean; displayName: string } {
       displayName: w.versace22_chat.user_display_name || 'User',
     };
   }
+  // If we're in WP but not logged in, guests can still chat
   if (w.versace22_chat) {
     return { isLoggedIn: false, displayName: 'Guest' };
   }

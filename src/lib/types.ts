@@ -4,17 +4,7 @@ export interface Persona {
   description: string;
   model: string;
   avatar: string;
-  avatarColor?: string;
-  visibility?: 'public' | 'private';
   isDefault?: boolean;
-}
-
-export interface MainCharacter {
-  name: string;
-  description: string;
-  avatarInitials: string;
-  avatarColor: string;
-  model: string;
 }
 
 export interface Message {
@@ -29,10 +19,6 @@ export interface Conversation {
   id: string;
   title: string;
   personaId: string;
-  personaName?: string;
-  avatarInitials?: string;
-  avatarColor?: string;
-  isMainChat?: boolean;
   messages: Message[];
   updatedAt: Date;
 }
