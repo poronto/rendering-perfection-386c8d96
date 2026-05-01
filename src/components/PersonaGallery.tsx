@@ -63,7 +63,7 @@ export function PersonaGallery({ personas, selectedPersona, onSelectPersona, onB
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{persona.description}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">{persona.model}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">VERSACE22 ai</p>
                   </div>
                 </div>
               </button>
