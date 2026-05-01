@@ -15,6 +15,31 @@ export function ConversationFolders({
   onSelectConversation,
 }: ConversationFoldersProps) {
   const [openFolder, setOpenFolder] = useState<string | null>('recent');
+  const { isStarred, isArchived } = useConversationFlags();
+
+  const FOLDERS = [
+    {
+      id: 'recent',
+      label: 'Recent',
+      icon: Clock,
+      filter: (c: Conversation) => {
+        const dayMs = 7 * 24 * 60 * 60 * 1000;
+        return !isArchived(c.id) && new Date(c.updatedAt).getTime() > Date.now() - dayMs;
+      },
+    },
+    {
+      id: 'starred',
+      label: 'Starred',
+      icon: Star,
+      filter: (c: Conversation) => isStarred(c.id) && !isArchived(c.id),
+    },
+    {
+      id: 'archived',
+      label: 'Archived',
+      icon: Archive,
+      filter: (c: Conversation) => isArchived(c.id),
+    },
+  ];
 
   return (
     <div className="space-y-0.5">
