@@ -1,43 +1,13 @@
 import { useState } from 'react';
 import { Folder, FolderOpen, ChevronRight, Star, Clock, Archive } from 'lucide-react';
 import { Conversation } from '@/lib/types';
+import { useConversationFlags } from '@/hooks/useConversationFlags';
 
 interface ConversationFoldersProps {
   conversations: Conversation[];
   activeConversationId: string | null;
   onSelectConversation: (id: string) => void;
 }
-
-interface FolderDef {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  filter: (c: Conversation) => boolean;
-}
-
-const FOLDERS: FolderDef[] = [
-  {
-    id: 'recent',
-    label: 'Recent',
-    icon: Clock,
-    filter: (c) => {
-      const dayMs = 7 * 24 * 60 * 60 * 1000;
-      return new Date(c.updatedAt).getTime() > Date.now() - dayMs;
-    },
-  },
-  {
-    id: 'starred',
-    label: 'Starred',
-    icon: Star,
-    filter: () => false, // placeholder — would need starred state
-  },
-  {
-    id: 'archived',
-    label: 'Archived',
-    icon: Archive,
-    filter: () => false,
-  },
-];
 
 export function ConversationFolders({
   conversations,
