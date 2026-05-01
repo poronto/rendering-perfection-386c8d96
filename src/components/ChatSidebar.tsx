@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X, LogOut, Sun, Moon, Sparkles } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X, LogOut, Sun, Moon, Sparkles, MoreVertical, Star, Archive, Trash2 } from 'lucide-react';
 import { Conversation, Persona } from '@/lib/types';
 import { ConversationFolders } from './ConversationFolders';
 import { useTheme } from '@/hooks/useTheme';
+import { useConversationFlags } from '@/hooks/useConversationFlags';
 
 export type SidebarView = 'chat' | 'leaderboard' | 'profile' | 'refer' | 'personas';
 
@@ -49,23 +50,34 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [findUsOpen, setFindUsOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const { theme, toggleTheme } = useTheme();
+  const { toggleStar, toggleArchive, isStarred, isArchived } = useConversationFlags();
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const filtered = conversations.filter(c =>
-    c.title.toLowerCase().includes(searchQuery.toLowerCase())
+  // Close menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    if (openMenuId) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openMenuId]);
+
+  // Active conversations: not archived, matches search
+  const visible = conversations.filter(
+    (c) => !isArchived(c.id) && c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleNavClick = (action: string) => {
     if (action === 'findus') {
-      setFindUsOpen(prev => !prev);
+      setFindUsOpen((prev) => !prev);
       return;
     }
     onViewChange(action as SidebarView);
-    setSidebarOpen(false);
-  };
-
-  const setSidebarOpen = (_open: boolean) => {
-    if (!_open) onClose();
+    onClose();
   };
 
   return (
@@ -166,22 +178,82 @@ export function ChatSidebar({
             New conversation
           </button>
 
-          {filtered.map((conv) => (
-            <button
-              key={conv.id}
-              onClick={() => onSelectConversation(conv.id)}
-              className={`
-                group w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm
-                transition-all duration-150 text-left
-                ${conv.id === activeConversationId
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                }
-              `}
-            >
-              <span className="truncate flex-1">{conv.title}</span>
-            </button>
-          ))}
+          {visible.map((conv) => {
+            const starred = isStarred(conv.id);
+            const isActive = conv.id === activeConversationId;
+            const menuOpen = openMenuId === conv.id;
+
+            return (
+              <div key={conv.id} className="relative group">
+                <div
+                  className={`
+                    flex items-center gap-1 pr-1 rounded-lg text-sm transition-all duration-150
+                    ${isActive
+                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                    }
+                  `}
+                >
+                  <button
+                    onClick={() => onSelectConversation(conv.id)}
+                    className="flex-1 flex items-center gap-2 px-3 py-2 text-left min-w-0"
+                  >
+                    {starred && <Star className="w-3 h-3 text-primary fill-primary shrink-0" />}
+                    <span className="truncate flex-1">{conv.title}</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuId(menuOpen ? null : conv.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1.5 rounded hover:bg-sidebar-accent transition-all"
+                    title="More options"
+                  >
+                    <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                {menuOpen && (
+                  <div
+                    ref={menuRef}
+                    className="absolute right-0 top-full mt-1 z-50 w-44 bg-popover border border-border rounded-lg shadow-lg overflow-hidden py-1"
+                  >
+                    <button
+                      onClick={() => {
+                        toggleStar(conv.id);
+                        setOpenMenuId(null);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors text-left"
+                    >
+                      <Star className={`w-3.5 h-3.5 ${starred ? 'fill-primary text-primary' : ''}`} />
+                      {starred ? 'Unstar' : 'Star'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        toggleArchive(conv.id);
+                        setOpenMenuId(null);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors text-left"
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                      Archive
+                    </button>
+                    <div className="border-t border-border my-1" />
+                    <button
+                      onClick={() => {
+                        onDeleteConversation(conv.id);
+                        setOpenMenuId(null);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors text-left"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* User */}
