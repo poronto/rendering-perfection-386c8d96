@@ -21,6 +21,7 @@ interface ChatSidebarProps {
   onClose: () => void;
   userName?: string;
   userInitial?: string;
+  userEmail?: string;
   avatarUrl?: string;
   onSignOut?: () => void;
 }
