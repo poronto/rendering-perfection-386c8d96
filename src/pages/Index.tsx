@@ -282,6 +282,13 @@ const Index = () => {
           </>
         )}
       </main>
+
+      {!wpMode && !authLoading && (!user || showAuth) && (
+        <AuthModal
+          blocking={!user}
+          onClose={user ? () => setShowAuth(false) : undefined}
+        />
+      )}
     </div>
   );
 };
