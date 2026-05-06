@@ -7,6 +7,7 @@ import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { PersonaGallery } from '@/components/PersonaGallery';
 import { SpecializedModesBar, SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
 import { LeaderboardView, ProfileView, ReferView } from '@/components/SidebarViews';
+import { AuthModal } from '@/components/AuthModal';
 import { DEFAULT_PERSONAS, Message, Persona } from '@/lib/types';
 import { sendMessageToWP, isWordPress } from '@/lib/wp-api';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,8 +15,9 @@ import { useConversations } from '@/hooks/useConversations';
 import { useWPConversations } from '@/hooks/useWPConversations';
 
 const Index = () => {
-  const { user, signOut, profile } = useAuth();
+  const { user, signOut, profile, loading: authLoading } = useAuth();
   const wpMode = isWordPress();
+  const [showAuth, setShowAuth] = useState(false);
 
   const supaConv = useConversations();
   const wpConv = useWPConversations();
@@ -83,6 +85,12 @@ const Index = () => {
     text: string,
     attachment?: { url: string; type: string; data?: string } | null,
   ) => {
+    // Gate: require auth in standalone (non-WP) mode
+    if (!wpMode && !user) {
+      setShowAuth(true);
+      return;
+    }
+
     // Prepend specialized mode prefix if active
     const modePrefix = activeMode.systemPrefix;
     const fullText = modePrefix ? `${modePrefix}\n\n${text}` : text;
@@ -211,13 +219,30 @@ const Index = () => {
               onSelectMode={setActiveMode}
             />
           </div>
-          <button
-            onClick={signOut}
-            className="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
-            title="Sign out"
-          >
-            <LogOut className="w-4 h-4 text-muted-foreground" />
-          </button>
+          {user ? (
+            <button
+              onClick={signOut}
+              className="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4 text-muted-foreground" />
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setShowAuth(true)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium border border-border hover:bg-muted transition-colors"
+              >
+                Log in
+              </button>
+              <button
+                onClick={() => setShowAuth(true)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Sign up
+              </button>
+            </div>
+          )}
         </header>
 
         {activeView === 'leaderboard' ? (
@@ -257,6 +282,13 @@ const Index = () => {
           </>
         )}
       </main>
+
+      {!wpMode && !authLoading && (!user || showAuth) && (
+        <AuthModal
+          blocking={!user}
+          onClose={user ? () => setShowAuth(false) : undefined}
+        />
+      )}
     </div>
   );
 };
