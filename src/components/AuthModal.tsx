@@ -90,7 +90,7 @@ export function AuthModal({ blocking = true, onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-[2px]">
       <div
         className="relative w-full max-w-sm bg-card border border-border rounded-2xl p-7 space-y-5 shadow-2xl"
         style={{ animation: 'fade-up 0.4s cubic-bezier(0.16,1,0.3,1) both' }}
