@@ -85,6 +85,12 @@ const Index = () => {
     text: string,
     attachment?: { url: string; type: string; data?: string } | null,
   ) => {
+    // Gate: require auth in standalone (non-WP) mode
+    if (!wpMode && !user) {
+      setShowAuth(true);
+      return;
+    }
+
     // Prepend specialized mode prefix if active
     const modePrefix = activeMode.systemPrefix;
     const fullText = modePrefix ? `${modePrefix}\n\n${text}` : text;
