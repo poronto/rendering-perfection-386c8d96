@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X, Sun, Moon, Sparkles, MoreVertical, Star, Archive, Trash2 } from 'lucide-react';
+import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X, LogOut, Sun, Moon, Sparkles, MoreVertical, Star, Archive, Trash2 } from 'lucide-react';
 import { Conversation, Persona } from '@/lib/types';
 import { ConversationFolders } from './ConversationFolders';
-import { UserAccountMenu } from './UserAccountMenu';
 import { useTheme } from '@/hooks/useTheme';
 import { useConversationFlags } from '@/hooks/useConversationFlags';
 
@@ -21,7 +20,6 @@ interface ChatSidebarProps {
   onClose: () => void;
   userName?: string;
   userInitial?: string;
-  userEmail?: string;
   avatarUrl?: string;
   onSignOut?: () => void;
 }
@@ -47,14 +45,12 @@ export function ChatSidebar({
   onClose,
   userName = 'User',
   userInitial = 'U',
-  userEmail,
   avatarUrl,
   onSignOut,
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [findUsOpen, setFindUsOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { toggleStar, toggleArchive, isStarred, isArchived } = useConversationFlags();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -261,7 +257,7 @@ export function ChatSidebar({
         </div>
 
         {/* User */}
-        <div className="p-3 border-t border-sidebar-border space-y-2 relative">
+        <div className="p-3 border-t border-sidebar-border space-y-2">
           <div className="flex items-center justify-between px-3">
             <button
               onClick={toggleTheme}
@@ -271,10 +267,7 @@ export function ChatSidebar({
               {theme === 'dark' ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
             </button>
           </div>
-          <button
-            onClick={() => setAccountMenuOpen((v) => !v)}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left"
-          >
+          <div className="flex items-center gap-3 px-3 py-2">
             {avatarUrl ? (
               <img src={avatarUrl} alt={userName} className="w-8 h-8 rounded-full object-cover shrink-0" />
             ) : (
@@ -283,18 +276,12 @@ export function ChatSidebar({
               </div>
             )}
             <span className="text-sm font-medium text-foreground flex-1 truncate">{userName}</span>
-            <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-
-          <UserAccountMenu
-            open={accountMenuOpen}
-            onClose={() => setAccountMenuOpen(false)}
-            onSignOut={onSignOut}
-            userName={userName}
-            userEmail={userEmail}
-            avatarUrl={avatarUrl}
-            userInitial={userInitial}
-          />
+            {onSignOut && (
+              <button onClick={onSignOut} className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors" title="Sign out">
+                <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            )}
+          </div>
         </div>
       </aside>
     </>

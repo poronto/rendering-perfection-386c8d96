@@ -201,7 +201,6 @@ const Index = () => {
         onClose={() => setSidebarOpen(false)}
         userName={displayName}
         userInitial={initials}
-        userEmail={user?.email || undefined}
         avatarUrl={avatarUrl}
         onSignOut={signOut}
       />
