@@ -7,6 +7,7 @@ import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { PersonaGallery } from '@/components/PersonaGallery';
 import { SpecializedModesBar, SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
 import { LeaderboardView, ProfileView, ReferView } from '@/components/SidebarViews';
+import { AuthModal } from '@/components/AuthModal';
 import { DEFAULT_PERSONAS, Message, Persona } from '@/lib/types';
 import { sendMessageToWP, isWordPress } from '@/lib/wp-api';
 import { useAuth } from '@/hooks/useAuth';
