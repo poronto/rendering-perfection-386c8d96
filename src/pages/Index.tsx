@@ -219,13 +219,30 @@ const Index = () => {
               onSelectMode={setActiveMode}
             />
           </div>
-          <button
-            onClick={signOut}
-            className="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
-            title="Sign out"
-          >
-            <LogOut className="w-4 h-4 text-muted-foreground" />
-          </button>
+          {user ? (
+            <button
+              onClick={signOut}
+              className="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4 text-muted-foreground" />
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setShowAuth(true)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium border border-border hover:bg-muted transition-colors"
+              >
+                Log in
+              </button>
+              <button
+                onClick={() => setShowAuth(true)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Sign up
+              </button>
+            </div>
+          )}
         </header>
 
         {activeView === 'leaderboard' ? (
