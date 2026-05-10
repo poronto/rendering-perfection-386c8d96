@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { isWordPress, pinConversationWP } from '@/lib/wp-api';
 
 const STAR_KEY = 'versace22_starred_conversations';
 const ARCHIVE_KEY = 'versace22_archived_conversations';
@@ -31,7 +32,13 @@ export function useConversationFlags() {
   const toggleStar = useCallback((id: string) => {
     setStarred((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      const willStar = !next.has(id);
+      willStar ? next.add(id) : next.delete(id);
+      // Sync server-side pin state when running inside WordPress.
+      if (isWordPress()) {
+        const numId = parseInt(id, 10);
+        if (!Number.isNaN(numId)) pinConversationWP(numId, willStar).catch(() => { /* silent */ });
+      }
       return next;
     });
   }, []);
