@@ -50,6 +50,7 @@ export function ChatSidebar({
   userInitial = 'U',
   avatarUrl,
   onSignOut,
+  onOpenMemories,
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [findUsOpen, setFindUsOpen] = useState(false);
