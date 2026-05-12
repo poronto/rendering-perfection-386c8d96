@@ -215,6 +215,7 @@ const Index = () => {
         userInitial={initials}
         avatarUrl={avatarUrl}
         onSignOut={signOut}
+        onOpenMemories={() => setMemoryOpen(true)}
       />
 
       <main className="flex-1 flex flex-col min-w-0">
