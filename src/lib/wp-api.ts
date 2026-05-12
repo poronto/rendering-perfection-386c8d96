@@ -93,16 +93,29 @@ export interface ParsedArtifact {
 export function extractArtifacts(reply: string): { cleanText: string; artifacts: ParsedArtifact[] } {
   const artifacts: ParsedArtifact[] = [];
   if (!reply) return { cleanText: reply, artifacts };
-  const re = /<artifact\s+type="([a-zA-Z0-9_-]+)"(?:\s+title="([^"]*)")?>([\s\S]+?)<\/artifact>/gi;
-  const cleanText = reply.replace(re, (_m, type: string, title: string | undefined, content: string) => {
-    artifacts.push({
-      type: (type || 'code').toLowerCase(),
-      title: (title || 'Artifact').trim(),
-      content: content.trim(),
-    });
-    // Replace the inline block with a marker the UI can render as a card placeholder.
-    return `\n\n📎 _Artifact: ${title || 'Artifact'} (${(type || 'code').toLowerCase()})_\n\n`;
+
+  // 1. <artifact type="..." title="...">...</artifact>
+  const tagRe = /<artifact\s+type="([a-zA-Z0-9_-]+)"(?:\s+title="([^"]*)")?>([\s\S]+?)<\/artifact>/gi;
+  let cleanText = reply.replace(tagRe, (_m, type: string, title: string | undefined, content: string) => {
+    const t = (type || 'code').toLowerCase();
+    const ti = (title || 'Artifact').trim();
+    artifacts.push({ type: t, title: ti, content: content.trim() });
+    return `\n\n🎨 _Artifact: ${ti} (${t})_\n\n`;
   });
+
+  // 2. Fenced code blocks with renderable types: html, svg, markdown, react, jsx, tsx
+  const FENCE_TYPES = new Set(['html', 'svg', 'markdown', 'md', 'react', 'jsx', 'tsx']);
+  const fenceRe = /```([a-zA-Z0-9_+-]+)\s*\n([\s\S]+?)```/g;
+  let idx = 1;
+  cleanText = cleanText.replace(fenceRe, (match, lang: string, body: string) => {
+    const t = lang.toLowerCase();
+    if (!FENCE_TYPES.has(t)) return match;
+    const normalized = t === 'md' ? 'markdown' : (t === 'jsx' || t === 'tsx' ? 'react' : t);
+    const title = `${normalized.toUpperCase()} snippet ${idx++}`;
+    artifacts.push({ type: normalized, title, content: body.trim() });
+    return `\n\n🎨 _Artifact: ${title} (${normalized})_\n\n`;
+  });
+
   return { cleanText, artifacts };
 }
 
