@@ -232,15 +232,6 @@ const Index = () => {
               onSelectMode={setActiveMode}
             />
           </div>
-          {isWordPress() && isWPAdmin() && (
-            <button
-              onClick={() => setMemoryOpen(true)}
-              className="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
-              title="Memories"
-            >
-              <Brain className="w-4 h-4 text-muted-foreground" />
-            </button>
-          )}
           {user ? (
             <button
               onClick={signOut}
