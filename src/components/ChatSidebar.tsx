@@ -145,6 +145,9 @@ export function ChatSidebar({
           )}
         </nav>
 
+        {/* Projects (admin-only, top of sidebar above conversations) */}
+        <ProjectsSection />
+
         {/* Search */}
         <div className="px-3 mt-4">
           <div className="relative">
