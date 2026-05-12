@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Menu, LogOut, Brain } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import { ChatSidebar, SidebarView } from '@/components/ChatSidebar';
 import { ChatInput } from '@/components/ChatInput';
 import { ChatMessages } from '@/components/ChatMessages';
