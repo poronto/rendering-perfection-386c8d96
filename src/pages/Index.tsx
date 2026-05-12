@@ -11,7 +11,7 @@ import { AuthModal } from '@/components/AuthModal';
 import { ArtifactCanvas } from '@/components/ArtifactCanvas';
 import { MemoryDrawer } from '@/components/MemoryDrawer';
 import { DEFAULT_PERSONAS, Message, MessageArtifact, Persona } from '@/lib/types';
-import { sendMessageToWP, isWordPress, isWPAdmin, ParsedArtifact } from '@/lib/wp-api';
+import { sendMessageToWP, isWordPress, ParsedArtifact } from '@/lib/wp-api';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { useWPConversations } from '@/hooks/useWPConversations';
