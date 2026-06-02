@@ -4,13 +4,17 @@ export interface Persona {
   description: string;
   model: string;
   avatar: string;
+  avatarColor?: string;
+  visibility?: 'public' | 'private';
   isDefault?: boolean;
 }
 
-export interface MessageArtifact {
-  type: string;
-  title: string;
-  content: string;
+export interface MainCharacter {
+  name: string;
+  description: string;
+  avatarInitials: string;
+  avatarColor: string;
+  model: string;
 }
 
 export interface Message {
@@ -19,17 +23,18 @@ export interface Message {
   content: string;
   timestamp: Date;
   persona?: Persona;
-  artifacts?: MessageArtifact[];
 }
 
 export interface Conversation {
   id: string;
   title: string;
   personaId: string;
+  personaName?: string;
+  avatarInitials?: string;
+  avatarColor?: string;
+  isMainChat?: boolean;
   messages: Message[];
   updatedAt: Date;
-  pinned?: boolean;
-  projectId?: number | null;
 }
 
 export const DEFAULT_PERSONAS: Persona[] = [

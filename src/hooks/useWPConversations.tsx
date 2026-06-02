@@ -25,7 +25,11 @@ export function useWPConversations() {
         wpConvs.map((c: WPConversation) => ({
           id: String(c.id),
           title: c.title || `Conversation #${c.id}`,
-          personaId: '',
+          personaId: c.persona_id ? String(c.persona_id) : '',
+          personaName: c.persona_name || undefined,
+          avatarInitials: c.avatar_initials || undefined,
+          avatarColor: c.avatar_color || undefined,
+          isMainChat: c.is_main_chat === 1,
           messages: [],
           updatedAt: new Date(c.updated_at),
         }))
@@ -63,17 +67,12 @@ export function useWPConversations() {
     }
   }, []);
 
-  // In WP mode, conversations are auto-created by the plugin when sending the first message.
-  // We don't need to explicitly create them.
   const createConversation = useCallback(async (_title: string, _personaId: string): Promise<string | null> => {
-    // The WP plugin creates conversations automatically on first chat message.
-    // Return null — the conversation ID will come back from the chat response.
     return null;
   }, []);
 
   const saveMessage = useCallback(async (_conversationId: string, _role: 'user' | 'assistant', _content: string, _personaId?: string) => {
     // Messages are saved server-side by the WP plugin's handle_chat.
-    // No client-side action needed.
   }, []);
 
   return {

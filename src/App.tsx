@@ -12,6 +12,17 @@ import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-dvh bg-background flex items-center justify-center">
+      <div className="text-primary animate-pulse text-lg font-medium">Loading...</div>
+    </div>
+  );
+  if (!user) return <Navigate to="/auth" replace />;
+  return <>{children}</>;
+}
+
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -30,7 +41,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

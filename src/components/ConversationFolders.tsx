@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Folder, FolderOpen, ChevronRight, Star, Clock, Archive } from 'lucide-react';
 import { Conversation } from '@/lib/types';
-import { useConversationFlags } from '@/hooks/useConversationFlags';
 
 interface ConversationFoldersProps {
   conversations: Conversation[];
@@ -9,37 +8,43 @@ interface ConversationFoldersProps {
   onSelectConversation: (id: string) => void;
 }
 
+interface FolderDef {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  filter: (c: Conversation) => boolean;
+}
+
+const FOLDERS: FolderDef[] = [
+  {
+    id: 'recent',
+    label: 'Recent',
+    icon: Clock,
+    filter: (c) => {
+      const dayMs = 7 * 24 * 60 * 60 * 1000;
+      return new Date(c.updatedAt).getTime() > Date.now() - dayMs;
+    },
+  },
+  {
+    id: 'starred',
+    label: 'Starred',
+    icon: Star,
+    filter: () => false, // placeholder — would need starred state
+  },
+  {
+    id: 'archived',
+    label: 'Archived',
+    icon: Archive,
+    filter: () => false,
+  },
+];
+
 export function ConversationFolders({
   conversations,
   activeConversationId,
   onSelectConversation,
 }: ConversationFoldersProps) {
   const [openFolder, setOpenFolder] = useState<string | null>('recent');
-  const { isStarred, isArchived } = useConversationFlags();
-
-  const FOLDERS = [
-    {
-      id: 'recent',
-      label: 'Recent',
-      icon: Clock,
-      filter: (c: Conversation) => {
-        const dayMs = 7 * 24 * 60 * 60 * 1000;
-        return !isArchived(c.id) && new Date(c.updatedAt).getTime() > Date.now() - dayMs;
-      },
-    },
-    {
-      id: 'starred',
-      label: 'Starred',
-      icon: Star,
-      filter: (c: Conversation) => isStarred(c.id) && !isArchived(c.id),
-    },
-    {
-      id: 'archived',
-      label: 'Archived',
-      icon: Archive,
-      filter: (c: Conversation) => isArchived(c.id),
-    },
-  ];
 
   return (
     <div className="space-y-0.5">

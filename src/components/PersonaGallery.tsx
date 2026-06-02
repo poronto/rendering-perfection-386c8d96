@@ -1,23 +1,25 @@
-import { ArrowLeft, Sparkles } from 'lucide-react';
-import { Persona } from '@/lib/types';
+import { ArrowLeft, Sparkles, Star } from 'lucide-react';
+import { Persona, MainCharacter } from '@/lib/types';
 
 interface PersonaGalleryProps {
   personas: Persona[];
-  selectedPersona: Persona;
+  selectedPersona: Persona | null;
   onSelectPersona: (persona: Persona) => void;
+  mainCharacter?: MainCharacter | null;
+  isMainChatMode?: boolean;
+  onSelectMainCharacter?: () => void;
   onBack: () => void;
 }
 
-const PERSONA_COLORS = [
-  'from-orange-500/20 to-red-500/20 border-orange-500/30',
-  'from-blue-500/20 to-cyan-500/20 border-blue-500/30',
-  'from-violet-500/20 to-purple-500/20 border-violet-500/30',
-  'from-emerald-500/20 to-green-500/20 border-emerald-500/30',
-  'from-amber-500/20 to-yellow-500/20 border-amber-500/30',
-  'from-pink-500/20 to-rose-500/20 border-pink-500/30',
-];
-
-export function PersonaGallery({ personas, selectedPersona, onSelectPersona, onBack }: PersonaGalleryProps) {
+export function PersonaGallery({
+  personas,
+  selectedPersona,
+  onSelectPersona,
+  mainCharacter,
+  isMainChatMode,
+  onSelectMainCharacter,
+  onBack,
+}: PersonaGalleryProps) {
   return (
     <div className="flex-1 flex flex-col items-center px-4 py-8 overflow-y-auto">
       <button
@@ -35,24 +37,60 @@ export function PersonaGallery({ personas, selectedPersona, onSelectPersona, onB
           <p className="text-sm text-muted-foreground">Choose an AI persona to chat with</p>
         </div>
 
+        {/* Main Character Card */}
+        {mainCharacter && onSelectMainCharacter && (
+          <button
+            onClick={onSelectMainCharacter}
+            className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-200
+                       bg-gradient-to-br from-primary/10 to-primary/5
+                       ${isMainChatMode
+                         ? 'border-primary ring-2 ring-primary/30 shadow-lg scale-[1.01]'
+                         : 'border-primary/20 hover:border-primary/40 hover:shadow-md'
+                       }`}
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+                style={{ backgroundColor: mainCharacter.avatarColor }}
+              >
+                {mainCharacter.avatarInitials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-foreground">{mainCharacter.name}</h3>
+                  {isMainChatMode && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/20 text-primary">ACTIVE</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{mainCharacter.description}</p>
+                <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">🌟 Main Character · {mainCharacter.model}</p>
+              </div>
+            </div>
+          </button>
+        )}
+
+        {/* Persona Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {personas.map((persona, idx) => {
-            const isSelected = selectedPersona.id === persona.id;
-            const colorClass = PERSONA_COLORS[idx % PERSONA_COLORS.length];
+          {personas.map((persona) => {
+            const isSelected = !isMainChatMode && selectedPersona?.id === persona.id;
 
             return (
               <button
                 key={persona.id}
                 onClick={() => onSelectPersona(persona)}
                 className={`text-left p-4 rounded-xl border transition-all duration-200
-                           bg-gradient-to-br ${colorClass}
+                           bg-card hover:bg-accent/50
                            ${isSelected
-                             ? 'ring-2 ring-primary scale-[1.02] shadow-lg'
-                             : 'hover:scale-[1.01] hover:shadow-md'
+                             ? 'ring-2 ring-primary border-primary scale-[1.02] shadow-lg'
+                             : 'border-border hover:scale-[1.01] hover:shadow-md'
                            }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+                    style={{ backgroundColor: persona.avatarColor || 'hsl(var(--primary))' }}
+                  >
                     {persona.avatar}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -63,13 +101,30 @@ export function PersonaGallery({ personas, selectedPersona, onSelectPersona, onB
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{persona.description}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">VERSACE22 ai</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{persona.model}</p>
+                      {persona.visibility && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          persona.visibility === 'public'
+                            ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                            : 'bg-orange-500/20 text-orange-600 dark:text-orange-400'
+                        }`}>
+                          {persona.visibility === 'public' ? '🌍 PUBLIC' : '🔒 PRIVATE'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </button>
             );
           })}
         </div>
+
+        {personas.length === 0 && !mainCharacter && (
+          <div className="text-center py-12 text-muted-foreground text-sm">
+            No personas available. Contact your administrator.
+          </div>
+        )}
       </div>
     </div>
   );

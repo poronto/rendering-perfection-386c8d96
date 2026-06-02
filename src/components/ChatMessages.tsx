@@ -1,10 +1,8 @@
-import { useState, useRef } from 'react';
-import { Copy, Check, RefreshCw, ExternalLink, Volume2, VolumeX } from 'lucide-react';
-import { Message, MessageArtifact } from '@/lib/types';
+import { useState } from 'react';
+import { Copy, Check, RefreshCw, ExternalLink } from 'lucide-react';
+import { Message } from '@/lib/types';
 import { MarkdownMessage } from './MarkdownMessage';
 import { StreamingMessage } from './StreamingMessage';
-import { ArtifactCard } from './ArtifactCard';
-import { speakTextWP, isWordPress } from '@/lib/wp-api';
 import { toast } from 'sonner';
 
 interface ChatMessagesProps {
@@ -12,19 +10,21 @@ interface ChatMessagesProps {
   isTyping?: boolean;
   streamingMessageId?: string | null;
   onRegenerate?: (messageIndex: number) => void;
-  onOpenArtifact?: (artifact: MessageArtifact) => void;
 }
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(text);
+    setCopied(true);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <button
-      onClick={() => {
-        navigator.clipboard?.writeText(text);
-        setCopied(true);
-        toast.success('Copied to clipboard');
-        setTimeout(() => setCopied(false), 2000);
-      }}
+      onClick={handleCopy}
       className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
       title="Copy message"
     >
@@ -33,51 +33,20 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function ReadAloudButton({ text }: { text: string }) {
-  const [playing, setPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  if (!isWordPress()) return null;
-
-  const toggle = async () => {
-    if (playing && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-      setPlaying(false);
-      return;
-    }
-    try {
-      const dataUrl = await speakTextWP(text.slice(0, 2500));
-      const audio = new Audio(dataUrl);
-      audioRef.current = audio;
-      audio.onended = () => setPlaying(false);
-      audio.onerror = () => { setPlaying(false); toast.error('Playback failed'); };
-      await audio.play();
-      setPlaying(true);
-    } catch (e: any) {
-      toast.error(e?.message || 'TTS failed');
-    }
-  };
-
-  return (
-    <button
-      onClick={toggle}
-      className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-      title={playing ? 'Stop reading' : 'Read aloud'}
-    >
-      {playing ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-    </button>
-  );
-}
-
+/** Parse citation links like [1](url) or [Source](url) from the AI response */
 function CitationLinks({ content }: { content: string }) {
   const citationRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
   const citations: { label: string; url: string }[] = [];
   let match;
+
   while ((match = citationRegex.exec(content)) !== null) {
-    if (!citations.some(c => c.url === match![2])) citations.push({ label: match[1], url: match[2] });
+    if (!citations.some(c => c.url === match[2])) {
+      citations.push({ label: match[1], url: match[2] });
+    }
   }
+
   if (citations.length === 0) return null;
+
   return (
     <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border/50">
       {citations.slice(0, 5).map((cite, i) => (
@@ -97,15 +66,18 @@ function CitationLinks({ content }: { content: string }) {
   );
 }
 
-export function ChatMessages({ messages, isTyping, streamingMessageId, onRegenerate, onOpenArtifact }: ChatMessagesProps) {
+export function ChatMessages({ messages, isTyping, streamingMessageId, onRegenerate }: ChatMessagesProps) {
   if (messages.length === 0 && !isTyping) return null;
+
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
       {messages.map((msg, i) => (
         <div
           key={msg.id}
           className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          style={{ animation: `fade-up 0.4s cubic-bezier(0.16,1,0.3,1) ${i * 0.05}s both` }}
+          style={{
+            animation: `fade-up 0.4s cubic-bezier(0.16,1,0.3,1) ${i * 0.05}s both`,
+          }}
         >
           {msg.role === 'assistant' && (
             <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center
@@ -133,24 +105,14 @@ export function ChatMessages({ messages, isTyping, streamingMessageId, onRegener
               )}
             </div>
 
-            {/* Artifact cards */}
-            {msg.role === 'assistant' && msg.artifacts && msg.artifacts.length > 0 && (
-              <div className="mt-1 space-y-2">
-                {msg.artifacts.map((a, idx) => (
-                  <ArtifactCard key={idx} artifact={a} onOpen={() => onOpenArtifact?.(a)} />
-                ))}
-              </div>
-            )}
-
-            {/* Toolbar */}
+            {/* Copy / Regenerate toolbar for AI messages */}
             {msg.role === 'assistant' && msg.id !== streamingMessageId && (
-              <div
-                className="flex items-center gap-1 mt-1 ml-1 opacity-0 transition-opacity"
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
+              <div className="flex items-center gap-1 mt-1 ml-1 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity"
+                   style={{ opacity: undefined }}
+                   onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                   onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
               >
                 <CopyButton text={msg.content} />
-                <ReadAloudButton text={msg.content} />
                 {onRegenerate && (
                   <button
                     onClick={() => onRegenerate(i)}
