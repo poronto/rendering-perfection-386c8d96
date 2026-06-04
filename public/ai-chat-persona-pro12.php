@@ -2007,8 +2007,23 @@ class AI_Chat_Persona_Pro_Ultimate {
         elseif ($persona->use_global_rewards && get_option('aicpp_global_rewards_enabled', '0') === '1') $rew = get_option('aicpp_global_rewards_code', '');
         if (!empty(trim($rew))) $sys .= "\n\n## REWARDS\n" . $rew;
 
-        $injection = $this->get_injection_content($session);
-        if (!empty($injection)) $sys .= "\n\n## ADDITIONAL INSTRUCTIONS\n" . $injection;
+
+        // === Feature 2: inject persistent memories ===
+        $uid = get_current_user_id();
+        if ($uid) {
+            global $wpdb;
+            $mem_tbl = $wpdb->prefix . 'aicpp_memories';
+            $rows = $wpdb->get_col($wpdb->prepare(
+                "SELECT content FROM {$mem_tbl} WHERE user_id = %d AND is_active = 1 ORDER BY id ASC LIMIT 100",
+                $uid
+            ));
+            if (!empty($rows)) {
+                $bullets = '';
+                foreach ($rows as $r) { $bullets .= "- " . wp_strip_all_tags($r) . "\n"; }
+                $sys .= "\n\n## What you know about the user\n" . $bullets;
+            }
+        }
+        // === end Feature 2 ===
 
         $result = [['role' => 'system', 'content' => $sys]];
         foreach (array_slice($msgs, -20) as $m) {
