@@ -81,6 +81,27 @@ if (!function_exists('versace22_enqueue_chat_assets')) {
                 'logout_url'         => wp_logout_url(home_url()),
                 'plugin_version'     => '12.3',
             ));
+
+            // Features 2/3/4 — AICPP global consumed by the appended vanilla widgets.
+            wp_localize_script('versace22-chat-script', 'AICPP', array(
+                'ajax_url'    => admin_url('admin-ajax.php'),
+                'chat_nonce'  => wp_create_nonce('aicpp_chat'),
+                'admin_nonce' => $is_admin ? wp_create_nonce('aicpp') : '',
+                'is_admin'    => $is_admin ? 1 : 0,
+                'user_id'     => (int) ($is_logged_in ? $current_user->ID : 0),
+                'features'    => array('memory' => true, 'projects' => true, 'artifacts' => true),
+                'i18n'        => array(
+                    'memories'        => 'Memories',
+                    'add_memory'      => 'Add memory',
+                    'projects'        => 'Projects',
+                    'new_project'     => '+ New Project',
+                    'all_chats'       => 'All chats',
+                    'preview'         => 'Preview',
+                    'code'            => 'Code',
+                    'close'           => 'Close',
+                    'open_in_canvas'  => 'Open in canvas',
+                ),
+            ));
         }
     }
     add_action('wp_enqueue_scripts', 'versace22_enqueue_chat_assets');
