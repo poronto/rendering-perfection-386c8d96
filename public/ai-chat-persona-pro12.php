@@ -2007,8 +2007,23 @@ class AI_Chat_Persona_Pro_Ultimate {
         elseif ($persona->use_global_rewards && get_option('aicpp_global_rewards_enabled', '0') === '1') $rew = get_option('aicpp_global_rewards_code', '');
         if (!empty(trim($rew))) $sys .= "\n\n## REWARDS\n" . $rew;
 
-        $injection = $this->get_injection_content($session);
-        if (!empty($injection)) $sys .= "\n\n## ADDITIONAL INSTRUCTIONS\n" . $injection;
+
+        // === Feature 2: inject persistent memories ===
+        $uid = get_current_user_id();
+        if ($uid) {
+            global $wpdb;
+            $mem_tbl = $wpdb->prefix . 'aicpp_memories';
+            $rows = $wpdb->get_col($wpdb->prepare(
+                "SELECT content FROM {$mem_tbl} WHERE user_id = %d AND is_active = 1 ORDER BY id ASC LIMIT 100",
+                $uid
+            ));
+            if (!empty($rows)) {
+                $bullets = '';
+                foreach ($rows as $r) { $bullets .= "- " . wp_strip_all_tags($r) . "\n"; }
+                $sys .= "\n\n## What you know about the user\n" . $bullets;
+            }
+        }
+        // === end Feature 2 ===
 
         $result = [['role' => 'system', 'content' => $sys]];
         foreach (array_slice($msgs, -20) as $m) {
@@ -2742,3 +2757,128 @@ class AI_Chat_Persona_Pro_Ultimate {
 }
 
 AI_Chat_Persona_Pro_Ultimate::get_instance();
+
+/* =====================================================================
+ * Features 2 / 3 / 4 — Memory, Projects, Artifacts public AJAX endpoints
+ * Registered outside the main plugin class so they auto-load even after
+ * the constructor has run. Tables are created lazily on first call.
+ * ===================================================================*/
+
+function aicpp_feat_ensure_tables() {
+    global $wpdb;
+    $charset = $wpdb->get_charset_collate();
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+    dbDelta("CREATE TABLE {$wpdb->prefix}aicpp_memories (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        user_id bigint(20) NOT NULL,
+        content text NOT NULL,
+        is_active tinyint(1) NOT NULL DEFAULT 1,
+        created_at datetime NOT NULL,
+        PRIMARY KEY  (id),
+        KEY user_id (user_id)
+    ) {$charset};");
+
+    dbDelta("CREATE TABLE {$wpdb->prefix}aicpp_projects (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        user_id bigint(20) NOT NULL,
+        name varchar(190) NOT NULL,
+        description text NULL,
+        color varchar(20) NULL,
+        instructions longtext NULL,
+        created_at datetime NOT NULL,
+        PRIMARY KEY  (id),
+        KEY user_id (user_id)
+    ) {$charset};");
+
+    dbDelta("CREATE TABLE {$wpdb->prefix}aicpp_artifacts (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        user_id bigint(20) NOT NULL,
+        conversation_id bigint(20) NOT NULL DEFAULT 0,
+        message_id bigint(20) NOT NULL DEFAULT 0,
+        type varchar(30) NOT NULL,
+        title varchar(190) NULL,
+        content longtext NULL,
+        created_at datetime NOT NULL,
+        PRIMARY KEY  (id),
+        KEY user_id (user_id)
+    ) {$charset};");
+}
+add_action('init', 'aicpp_feat_ensure_tables');
+
+/* ---- Feature 2: Memories ---- */
+add_action('wp_ajax_aicpp_user_get_memories', function () {
+    check_ajax_referer('aicpp_chat', 'nonce');
+    if (!is_user_logged_in()) wp_send_json_error(['message' => 'Login required'], 401);
+    global $wpdb;
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, content, is_active FROM {$wpdb->prefix}aicpp_memories WHERE user_id=%d ORDER BY id DESC",
+        get_current_user_id()
+    ));
+    wp_send_json_success(['memories' => $rows]);
+});
+
+add_action('wp_ajax_aicpp_user_add_memory', function () {
+    check_ajax_referer('aicpp_chat', 'nonce');
+    if (!is_user_logged_in()) wp_send_json_error(['message' => 'Login required'], 401);
+    $content = isset($_POST['content']) ? wp_strip_all_tags(wp_unslash($_POST['content'])) : '';
+    $content = trim(mb_substr($content, 0, 500));
+    if ($content === '') wp_send_json_error(['message' => 'Empty memory']);
+    global $wpdb;
+    $wpdb->insert($wpdb->prefix . 'aicpp_memories', [
+        'user_id' => get_current_user_id(),
+        'content' => $content,
+        'is_active' => 1,
+        'created_at' => current_time('mysql'),
+    ]);
+    wp_send_json_success(['id' => $wpdb->insert_id, 'content' => $content, 'is_active' => 1]);
+});
+
+add_action('wp_ajax_aicpp_user_delete_memory', function () {
+    check_ajax_referer('aicpp_chat', 'nonce');
+    if (!is_user_logged_in()) wp_send_json_error(['message' => 'Login required'], 401);
+    global $wpdb;
+    $wpdb->delete($wpdb->prefix . 'aicpp_memories', [
+        'id' => intval($_POST['id'] ?? 0),
+        'user_id' => get_current_user_id(),
+    ]);
+    wp_send_json_success();
+});
+
+add_action('wp_ajax_aicpp_user_toggle_memory', function () {
+    check_ajax_referer('aicpp_chat', 'nonce');
+    if (!is_user_logged_in()) wp_send_json_error(['message' => 'Login required'], 401);
+    $on = !empty($_POST['is_active']) ? 1 : 0;
+    global $wpdb;
+    $wpdb->update($wpdb->prefix . 'aicpp_memories',
+        ['is_active' => $on],
+        ['id' => intval($_POST['id'] ?? 0), 'user_id' => get_current_user_id()]
+    );
+    wp_send_json_success(['is_active' => $on]);
+});
+
+/* ---- Feature 3: Projects ---- */
+add_action('wp_ajax_aicpp_user_list_projects', function () {
+    check_ajax_referer('aicpp_chat', 'nonce');
+    if (!is_user_logged_in()) wp_send_json_error(['message' => 'Login required'], 401);
+    global $wpdb;
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, name, description, color FROM {$wpdb->prefix}aicpp_projects WHERE user_id=%d ORDER BY id DESC",
+        get_current_user_id()
+    ));
+    wp_send_json_success(['projects' => $rows]);
+});
+
+/* ---- Feature 4: Artifact fetch (UI loads body on click) ---- */
+add_action('wp_ajax_aicpp_get_artifact', function () {
+    check_ajax_referer('aicpp_chat', 'nonce');
+    if (!is_user_logged_in()) wp_send_json_error(['message' => 'Login required'], 401);
+    global $wpdb;
+    $row = $wpdb->get_row($wpdb->prepare(
+        "SELECT id, type, title, content FROM {$wpdb->prefix}aicpp_artifacts WHERE id=%d AND user_id=%d",
+        intval($_POST['id'] ?? 0),
+        get_current_user_id()
+    ));
+    if (!$row) wp_send_json_error(['message' => 'Not found'], 404);
+    wp_send_json_success(['artifact' => $row]);
+});
