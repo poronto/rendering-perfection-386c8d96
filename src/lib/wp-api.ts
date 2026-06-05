@@ -11,6 +11,8 @@ interface WPConfig {
   loginUrl?: string;
   registerUrl?: string;
   logoutUrl?: string;
+  loginNonce?: string;
+  registerNonce?: string;
 }
 
 function getWPConfig(): WPConfig | null {
@@ -24,6 +26,8 @@ function getWPConfig(): WPConfig | null {
       loginUrl: w.versace22_chat.login_url,
       registerUrl: w.versace22_chat.register_url,
       logoutUrl: w.versace22_chat.logout_url,
+      loginNonce: w.versace22_chat.login_nonce,
+      registerNonce: w.versace22_chat.register_nonce,
     };
   }
   return null;
@@ -245,7 +249,7 @@ export async function registerUserWP(data: {
 
   const formData = new FormData();
   formData.append('action', 'aicpp_register_user');
-  formData.append('nonce', config.nonce);
+  formData.append('nonce', config.registerNonce || config.nonce);
   formData.append('username', data.username);
   formData.append('email', data.email);
   formData.append('password', data.password);
@@ -256,6 +260,25 @@ export async function registerUserWP(data: {
 
   const result = await response.json();
   if (!result.success) throw new Error(result.data?.message || 'Registration failed');
+
+  return result.data;
+}
+
+export async function loginUserWP(data: { login: string; password: string }): Promise<{ user_id: number; display_name: string }> {
+  const config = getWPConfig();
+  if (!config) throw new Error('WordPress config not available');
+
+  const formData = new FormData();
+  formData.append('action', 'aicpp_login_user');
+  formData.append('nonce', config.loginNonce || config.nonce);
+  formData.append('login', data.login);
+  formData.append('password', data.password);
+
+  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
+  if (!response.ok) throw new Error(`Login error: ${response.status}`);
+
+  const result = await response.json();
+  if (!result.success) throw new Error(result.data?.message || 'Login failed');
 
   return result.data;
 }
