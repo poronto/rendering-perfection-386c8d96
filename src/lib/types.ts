@@ -7,19 +7,12 @@ export interface Persona {
   isDefault?: boolean;
 }
 
-export interface MessageArtifact {
-  type: string;
-  title: string;
-  content: string;
-}
-
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   persona?: Persona;
-  artifacts?: MessageArtifact[];
 }
 
 export interface Conversation {
@@ -28,8 +21,6 @@ export interface Conversation {
   personaId: string;
   messages: Message[];
   updatedAt: Date;
-  pinned?: boolean;
-  projectId?: number | null;
 }
 
 export const DEFAULT_PERSONAS: Persona[] = [

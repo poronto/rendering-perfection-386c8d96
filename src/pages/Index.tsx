@@ -8,10 +8,8 @@ import { PersonaGallery } from '@/components/PersonaGallery';
 import { SpecializedModesBar, SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
 import { LeaderboardView, ProfileView, ReferView } from '@/components/SidebarViews';
 import { AuthModal } from '@/components/AuthModal';
-import { ArtifactCanvas } from '@/components/ArtifactCanvas';
-import { MemoryDrawer } from '@/components/MemoryDrawer';
-import { DEFAULT_PERSONAS, Message, MessageArtifact, Persona } from '@/lib/types';
-import { sendMessageToWP, isWordPress, ParsedArtifact } from '@/lib/wp-api';
+import { DEFAULT_PERSONAS, Message, Persona } from '@/lib/types';
+import { sendMessageToWP, isWordPress } from '@/lib/wp-api';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { useWPConversations } from '@/hooks/useWPConversations';
@@ -41,8 +39,6 @@ const Index = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<SpecializedMode>(SPECIALIZED_MODES[0]);
-  const [openArtifact, setOpenArtifact] = useState<ParsedArtifact | null>(null);
-  const [memoryOpen, setMemoryOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -124,11 +120,8 @@ const Index = () => {
     setIsTyping(true);
 
     let replyContent: string;
-    let artifacts: MessageArtifact[] = [];
     try {
-      const reply = await sendMessageToWP(fullText, attachment);
-      replyContent = reply.cleanText || reply.message;
-      artifacts = reply.artifacts;
+      replyContent = await sendMessageToWP(fullText, attachment);
     } catch (error) {
       console.error('Chat API error:', error);
       replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please check your API settings in WordPress admin.`;
@@ -141,7 +134,6 @@ const Index = () => {
       content: replyContent,
       timestamp: new Date(),
       persona: selectedPersona,
-      artifacts,
     };
 
     const updatedMessages = [...newMessages, aiMsg];
@@ -169,11 +161,8 @@ const Index = () => {
 
     setIsTyping(true);
     let replyContent: string;
-    let artifacts: MessageArtifact[] = [];
     try {
-      const reply = await sendMessageToWP(userMsg.content);
-      replyContent = reply.cleanText || reply.message;
-      artifacts = reply.artifacts;
+      replyContent = await sendMessageToWP(userMsg.content);
     } catch (error) {
       replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to regenerate'}`;
     }
@@ -185,7 +174,6 @@ const Index = () => {
       content: replyContent,
       timestamp: new Date(),
       persona: selectedPersona,
-      artifacts,
     };
 
     setCurrentMessages([...updated, aiMsg]);
@@ -215,7 +203,6 @@ const Index = () => {
         userInitial={initials}
         avatarUrl={avatarUrl}
         onSignOut={signOut}
-        onOpenMemories={() => setMemoryOpen(true)}
       />
 
       <main className="flex-1 flex flex-col min-w-0">
@@ -283,7 +270,6 @@ const Index = () => {
                     isTyping={isTyping}
                     streamingMessageId={streamingMessageId}
                     onRegenerate={handleRegenerate}
-                    onOpenArtifact={setOpenArtifact}
                   />
                   <div ref={messagesEndRef} />
                 </div>
@@ -303,9 +289,6 @@ const Index = () => {
           onClose={user ? () => setShowAuth(false) : undefined}
         />
       )}
-
-      <ArtifactCanvas artifact={openArtifact} onClose={() => setOpenArtifact(null)} />
-      <MemoryDrawer open={memoryOpen} onClose={() => setMemoryOpen(false)} />
     </div>
   );
 };

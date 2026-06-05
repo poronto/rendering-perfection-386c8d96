@@ -16,8 +16,6 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
-import { OpenRouterFreeModelsCard } from "./components/OpenRouterFreeModelsCard";
-import { isWPSettingsPage } from "./lib/wp-api";
 import "./wp-index.css";
 
 const queryClient = new QueryClient();
@@ -74,39 +72,13 @@ const WPApp = () => (
   </QueryClientProvider>
 );
 
-// Feature 6: on the AI Chat Pro Settings admin page, mount only the
-// OpenRouter Free Models card into a dedicated container provided by PHP.
-const isSettings = isWPSettingsPage() ||
-  (typeof document !== 'undefined' && document.body?.classList?.contains('aicpp-settings-page'));
-
-if (isSettings) {
-  let mount = document.getElementById('aicpp-or-free-models-mount');
-  if (!mount) {
-    mount = document.createElement('div');
-    mount.id = 'aicpp-or-free-models-mount';
-    // Try to append after the main settings wrap, else to body
-    const wrap = document.querySelector('.wrap') || document.body;
-    wrap.appendChild(mount);
-  }
-  createRoot(mount).render(
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <Sonner />
-          <OpenRouterFreeModelsCard />
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
+// Mount to our scoped container
+const container = document.getElementById("versace22-chat-root");
+if (container) {
+  createRoot(container).render(<WPApp />);
 } else {
-  // Mount the chat app on frontend
-  const container = document.getElementById("versace22-chat-root");
-  if (container) {
-    createRoot(container).render(<WPApp />);
-  } else {
-    const fallback = document.createElement("div");
-    fallback.id = "versace22-chat-root";
-    document.body.appendChild(fallback);
-    createRoot(fallback).render(<WPApp />);
-  }
+  const fallback = document.createElement("div");
+  fallback.id = "versace22-chat-root";
+  document.body.appendChild(fallback);
+  createRoot(fallback).render(<WPApp />);
 }
