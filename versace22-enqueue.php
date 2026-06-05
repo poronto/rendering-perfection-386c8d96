@@ -64,7 +64,11 @@ if (!function_exists('versace22_enqueue_chat_assets')) {
                 'user_display_name'  => $is_logged_in ? $current_user->display_name : '',
                 'user_email'         => $is_logged_in ? $current_user->user_email : '',
                 'user_avatar'        => $is_logged_in ? get_avatar_url($current_user->ID) : '',
+                'login_url'          => wp_login_url(home_url(add_query_arg(array(), $GLOBALS['wp']->request ?? ''))),
+                'register_url'       => wp_registration_url(),
                 'logout_url'         => wp_logout_url(home_url()),
+                'login_nonce'        => wp_create_nonce('aicpp_login'),
+                'register_nonce'     => wp_create_nonce('aicpp_register'),
             ));
         }
     }
