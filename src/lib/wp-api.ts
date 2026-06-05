@@ -17,7 +17,7 @@ function getWPConfig(): WPConfig | null {
   const w = window as any;
   if (w.versace22_chat) {
     return {
-      ajaxurl: w.versace22_chat.ajaxurl,
+      ajaxurl: w.versace22_chat.ajaxurl || w.versace22_chat.ajax_url,
       nonce: w.versace22_chat.nonce,
       personaId: parseInt(w.versace22_chat.persona_id, 10) || 1,
       sessionId: w.versace22_chat.session_id || 'sess_' + crypto.randomUUID(),
