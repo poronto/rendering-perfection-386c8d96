@@ -43,9 +43,7 @@ export function WPAuthProvider({ children }: { children: ReactNode }) {
   const [user] = useState<WPAuthContextType['user']>(
     wpData?.isLoggedIn
       ? { id: 'wp-user', email: wpData.email || undefined, created_at: undefined }
-      : wpData
-        ? { id: 'wp-guest', email: undefined, created_at: undefined }
-        : null
+      : null
   );
 
   const [profile] = useState<WPAuthContextType['profile']>(

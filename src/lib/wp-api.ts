@@ -8,16 +8,26 @@ interface WPConfig {
   nonce: string;
   personaId: number;
   sessionId: string;
+  loginUrl?: string;
+  registerUrl?: string;
+  logoutUrl?: string;
+  loginNonce?: string;
+  registerNonce?: string;
 }
 
 function getWPConfig(): WPConfig | null {
   const w = window as any;
   if (w.versace22_chat) {
     return {
-      ajaxurl: w.versace22_chat.ajaxurl,
+      ajaxurl: w.versace22_chat.ajaxurl || w.versace22_chat.ajax_url,
       nonce: w.versace22_chat.nonce,
       personaId: parseInt(w.versace22_chat.persona_id, 10) || 1,
       sessionId: w.versace22_chat.session_id || 'sess_' + crypto.randomUUID(),
+      loginUrl: w.versace22_chat.login_url,
+      registerUrl: w.versace22_chat.register_url,
+      logoutUrl: w.versace22_chat.logout_url,
+      loginNonce: w.versace22_chat.login_nonce,
+      registerNonce: w.versace22_chat.register_nonce,
     };
   }
   return null;
@@ -35,11 +45,23 @@ export function getWPSessionId(): string {
   return getWPConfig()?.sessionId ?? '';
 }
 
+export function getWPAuthLinks(): { loginUrl: string; registerUrl: string; logoutUrl: string } {
+  const config = getWPConfig();
+  const origin = window.location.origin;
+  const currentUrl = window.location.href;
+  return {
+    loginUrl: config?.loginUrl || `${origin}/wp-login.php?redirect_to=${encodeURIComponent(currentUrl)}`,
+    registerUrl: config?.registerUrl || `${origin}/wp-login.php?action=register`,
+    logoutUrl: config?.logoutUrl || `${origin}/wp-login.php?action=logout`,
+  };
+}
+
 // ===================== CHAT =====================
 
 export async function sendMessageToWP(
   message: string,
   attachment?: { url: string; type: string; data?: string } | null,
+  personaId?: string | number,
 ): Promise<string> {
   const config = getWPConfig();
   if (!config) throw new Error('WordPress config not available');
@@ -47,7 +69,7 @@ export async function sendMessageToWP(
   const formData = new FormData();
   formData.append('action', 'aicpp_chat');
   formData.append('nonce', config.nonce);
-  formData.append('persona_id', String(config.personaId));
+  formData.append('persona_id', String(personaId || config.personaId));
   formData.append('message', message);
   formData.append('session_id', config.sessionId);
   
@@ -122,11 +144,42 @@ export async function transcribeAudioWP(audioBlob: Blob): Promise<string> {
   return result.data.text;
 }
 
+// ===================== PERSONAS =====================
+
+export interface WPPersona {
+  id: number | string;
+  name: string;
+  description?: string;
+  avatar_initials?: string;
+  avatar_color?: string;
+  model?: string;
+  visibility?: string;
+}
+
+export async function getMyPersonasFromWP(): Promise<WPPersona[]> {
+  const config = getWPConfig();
+  if (!config) return [];
+
+  const formData = new FormData();
+  formData.append('action', 'aicpp_get_my_personas');
+  formData.append('nonce', config.nonce);
+
+  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
+  if (!response.ok) throw new Error(`Persona request failed: ${response.status}`);
+
+  const result = await response.json();
+  if (!result.success) throw new Error(result.data?.message || 'Unable to load personas');
+
+  const personas = Array.isArray(result.data?.personas) ? result.data.personas : [];
+  return personas;
+}
+
 // ===================== CONVERSATIONS =====================
 
 export interface WPConversation {
   id: number;
   title: string;
+  persona_id?: number | string | null;
   token_count: number;
   created_at: string;
   updated_at: string;
@@ -196,7 +249,7 @@ export async function registerUserWP(data: {
 
   const formData = new FormData();
   formData.append('action', 'aicpp_register_user');
-  formData.append('nonce', config.nonce);
+  formData.append('nonce', config.registerNonce || config.nonce);
   formData.append('username', data.username);
   formData.append('email', data.email);
   formData.append('password', data.password);
@@ -207,6 +260,25 @@ export async function registerUserWP(data: {
 
   const result = await response.json();
   if (!result.success) throw new Error(result.data?.message || 'Registration failed');
+
+  return result.data;
+}
+
+export async function loginUserWP(data: { login: string; password: string }): Promise<{ user_id: number; display_name: string }> {
+  const config = getWPConfig();
+  if (!config) throw new Error('WordPress config not available');
+
+  const formData = new FormData();
+  formData.append('action', 'aicpp_login_user');
+  formData.append('nonce', config.loginNonce || config.nonce);
+  formData.append('login', data.login);
+  formData.append('password', data.password);
+
+  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
+  if (!response.ok) throw new Error(`Login error: ${response.status}`);
+
+  const result = await response.json();
+  if (!result.success) throw new Error(result.data?.message || 'Login failed');
 
   return result.data;
 }
@@ -227,4 +299,9 @@ export function getWPUserInfo(): { isLoggedIn: boolean; displayName: string } {
     return { isLoggedIn: false, displayName: 'Guest' };
   }
   return { isLoggedIn: false, displayName: 'Guest' };
+}
+
+export function isWPUserLoggedIn(): boolean {
+  const w = window as any;
+  return !!w.versace22_chat?.user_logged_in;
 }

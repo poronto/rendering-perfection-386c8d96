@@ -8,15 +8,20 @@ import { PersonaGallery } from '@/components/PersonaGallery';
 import { SpecializedModesBar, SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
 import { LeaderboardView, ProfileView, ReferView } from '@/components/SidebarViews';
 import { AuthModal } from '@/components/AuthModal';
+import { WPAuthModal } from '@/components/WPAuthModal';
 import { DEFAULT_PERSONAS, Message, Persona } from '@/lib/types';
 import { sendMessageToWP, isWordPress } from '@/lib/wp-api';
 import { useAuth } from '@/hooks/useAuth';
+import { useWPAuth } from '@/hooks/useWPAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { useWPConversations } from '@/hooks/useWPConversations';
+import { useWPPersonas } from '@/hooks/useWPPersonas';
 
 const Index = () => {
-  const { user, signOut, profile, loading: authLoading } = useAuth();
   const wpMode = isWordPress();
+  const standaloneAuth = useAuth();
+  const wpAuth = useWPAuth();
+  const { user, signOut, profile, loading: authLoading } = wpMode ? wpAuth : standaloneAuth;
   const [showAuth, setShowAuth] = useState(false);
 
   const supaConv = useConversations();
@@ -32,7 +37,9 @@ const Index = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState<SidebarView>('chat');
-  const [personas] = useState<Persona[]>(DEFAULT_PERSONAS);
+  const [standalonePersonas] = useState<Persona[]>(DEFAULT_PERSONAS);
+  const { personas: wpPersonas } = useWPPersonas(wpMode);
+  const personas = wpMode ? wpPersonas : standalonePersonas;
   const [selectedPersona, setSelectedPersona] = useState<Persona>(DEFAULT_PERSONAS[0]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
@@ -48,6 +55,12 @@ const Index = () => {
   useEffect(() => {
     scrollToBottom();
   }, [currentMessages, isTyping, scrollToBottom]);
+
+  useEffect(() => {
+    if (personas.length > 0 && !personas.some((persona) => persona.id === selectedPersona.id)) {
+      setSelectedPersona(personas[0]);
+    }
+  }, [personas, selectedPersona.id]);
 
   const handleNewConversation = () => {
     setActiveConvId(null);
@@ -85,8 +98,7 @@ const Index = () => {
     text: string,
     attachment?: { url: string; type: string; data?: string } | null,
   ) => {
-    // Gate: require auth in standalone (non-WP) mode
-    if (!wpMode && !user) {
+    if (!user) {
       setShowAuth(true);
       return;
     }
@@ -121,7 +133,7 @@ const Index = () => {
 
     let replyContent: string;
     try {
-      replyContent = await sendMessageToWP(fullText, attachment);
+      replyContent = await sendMessageToWP(fullText, attachment, wpMode ? selectedPersona.id : undefined);
     } catch (error) {
       console.error('Chat API error:', error);
       replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please check your API settings in WordPress admin.`;
@@ -162,7 +174,7 @@ const Index = () => {
     setIsTyping(true);
     let replyContent: string;
     try {
-      replyContent = await sendMessageToWP(userMsg.content);
+      replyContent = await sendMessageToWP(userMsg.content, null, wpMode ? selectedPersona.id : undefined);
     } catch (error) {
       replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to regenerate'}`;
     }
@@ -285,6 +297,12 @@ const Index = () => {
 
       {!wpMode && !authLoading && (!user || showAuth) && (
         <AuthModal
+          blocking={!user}
+          onClose={user ? () => setShowAuth(false) : undefined}
+        />
+      )}
+      {wpMode && (!user || showAuth) && (
+        <WPAuthModal
           blocking={!user}
           onClose={user ? () => setShowAuth(false) : undefined}
         />
