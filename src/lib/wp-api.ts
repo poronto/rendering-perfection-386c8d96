@@ -140,11 +140,42 @@ export async function transcribeAudioWP(audioBlob: Blob): Promise<string> {
   return result.data.text;
 }
 
+// ===================== PERSONAS =====================
+
+export interface WPPersona {
+  id: number | string;
+  name: string;
+  description?: string;
+  avatar_initials?: string;
+  avatar_color?: string;
+  model?: string;
+  visibility?: string;
+}
+
+export async function getMyPersonasFromWP(): Promise<WPPersona[]> {
+  const config = getWPConfig();
+  if (!config) return [];
+
+  const formData = new FormData();
+  formData.append('action', 'aicpp_get_my_personas');
+  formData.append('nonce', config.nonce);
+
+  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
+  if (!response.ok) throw new Error(`Persona request failed: ${response.status}`);
+
+  const result = await response.json();
+  if (!result.success) throw new Error(result.data?.message || 'Unable to load personas');
+
+  const personas = Array.isArray(result.data?.personas) ? result.data.personas : [];
+  return personas;
+}
+
 // ===================== CONVERSATIONS =====================
 
 export interface WPConversation {
   id: number;
   title: string;
+  persona_id?: number | string | null;
   token_count: number;
   created_at: string;
   updated_at: string;
