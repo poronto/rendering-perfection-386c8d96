@@ -11,6 +11,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Load companion handlers (Projects, Memory, Conversation-Project assignment).
+$versace22_companion = plugin_dir_path(__FILE__) . 'versace22-projects-memory.php';
+if (file_exists($versace22_companion)) {
+    require_once $versace22_companion;
+}
+
 // Add the chat container div to the footer
 if (!function_exists('versace22_render_chat_container')) {
     function versace22_render_chat_container() {
