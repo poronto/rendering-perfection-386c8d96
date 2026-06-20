@@ -259,6 +259,12 @@ const Index = () => {
               onSelectMode={setActiveMode}
             />
           </div>
+          <ProjectPicker
+            projects={projects}
+            selectedProjectId={activeProjectId}
+            disabled={!activeConvId}
+            onSelect={handleAssignProject}
+          />
           {user ? (
             <button
               onClick={signOut}
