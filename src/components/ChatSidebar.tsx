@@ -27,6 +27,8 @@ interface ChatSidebarProps {
 const navItems = [
   { icon: MessageCircle, label: 'Chat', action: 'chat' },
   { icon: Sparkles, label: 'Personas', action: 'personas' },
+  { icon: FolderKanban, label: 'Projects', action: 'projects' },
+  { icon: Brain, label: 'Memory', action: 'memory' },
   { icon: Trophy, label: 'Leaderboard', badge: 'BETA', action: 'leaderboard' },
   { icon: User, label: 'Profile', action: 'profile' },
   { icon: Gift, label: 'Refer for rewards', action: 'refer' },
