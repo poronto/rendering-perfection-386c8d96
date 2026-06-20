@@ -241,6 +241,8 @@ const Index = () => {
         userInitial={initials}
         avatarUrl={avatarUrl}
         onSignOut={signOut}
+        projects={projects}
+        projectAssignments={projectAssignments}
       />
 
       <main className="flex-1 flex flex-col min-w-0">
