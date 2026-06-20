@@ -219,6 +219,11 @@ const Index = () => {
   const initials = displayName.charAt(0).toUpperCase();
   const avatarUrl = profile?.avatar_url || undefined;
 
+  const handleAssignProject = async (projectId: string | null) => {
+    if (!activeConvId) return;
+    await assignConversation(activeConvId, projectId);
+  };
+
   return (
     <div className="flex h-dvh bg-background overflow-hidden">
       <ChatSidebar
