@@ -7,6 +7,9 @@ import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { PersonaGallery } from '@/components/PersonaGallery';
 import { SpecializedModesBar, SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
 import { LeaderboardView, ProfileView, ReferView } from '@/components/SidebarViews';
+import { ProjectsView } from '@/components/ProjectsView';
+import { MemoryView } from '@/components/MemoryView';
+import { ProjectPicker } from '@/components/ProjectPicker';
 import { AuthModal } from '@/components/AuthModal';
 import { WPAuthModal } from '@/components/WPAuthModal';
 import { DEFAULT_PERSONAS, Message, Persona } from '@/lib/types';
@@ -16,6 +19,8 @@ import { useWPAuth } from '@/hooks/useWPAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { useWPConversations } from '@/hooks/useWPConversations';
 import { useWPPersonas } from '@/hooks/useWPPersonas';
+import { useProjects } from '@/hooks/useProjects';
+import { useMemory } from '@/hooks/useMemory';
 
 const Index = () => {
   const wpMode = isWordPress();
