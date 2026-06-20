@@ -118,9 +118,15 @@ const Index = () => {
       return;
     }
 
-    // Prepend specialized mode prefix if active
+    // Build prepended context: memory preamble + project instructions + mode prefix
+    const memoryPreamble = memory.buildPreamble();
+    const projectInstructions = activeProject?.customInstructions
+      ? `Project context "${activeProject.name}":\n${activeProject.customInstructions}`
+      : '';
     const modePrefix = activeMode.systemPrefix;
-    const fullText = modePrefix ? `${modePrefix}\n\n${text}` : text;
+    const fullText = [memoryPreamble, projectInstructions, modePrefix, text]
+      .filter(Boolean)
+      .join('\n\n');
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
