@@ -304,6 +304,10 @@ const Index = () => {
             onSelectPersona={handleSelectPersona}
             onBack={() => setActiveView('chat')}
           />
+        ) : activeView === 'projects' ? (
+          <ProjectsView onBackToChat={() => setActiveView('chat')} />
+        ) : activeView === 'memory' ? (
+          <MemoryView onBackToChat={() => setActiveView('chat')} />
         ) : (
           <>
             {currentMessages.length === 0 ? (
