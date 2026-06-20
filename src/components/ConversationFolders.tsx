@@ -1,23 +1,27 @@
 import { useState } from 'react';
-import { Folder, FolderOpen, ChevronRight, Star, Clock, Archive } from 'lucide-react';
-import { Conversation } from '@/lib/types';
+import { Folder, FolderOpen, ChevronRight, Star, Clock, Archive, FolderKanban } from 'lucide-react';
+import { Conversation, Project } from '@/lib/types';
 import { useConversationFlags } from '@/hooks/useConversationFlags';
 
 interface ConversationFoldersProps {
   conversations: Conversation[];
   activeConversationId: string | null;
   onSelectConversation: (id: string) => void;
+  projects?: Project[];
+  assignments?: Record<string, string>;
 }
 
 export function ConversationFolders({
   conversations,
   activeConversationId,
   onSelectConversation,
+  projects = [],
+  assignments = {},
 }: ConversationFoldersProps) {
   const [openFolder, setOpenFolder] = useState<string | null>('recent');
   const { isStarred, isArchived } = useConversationFlags();
 
-  const FOLDERS = [
+  const baseFolders = [
     {
       id: 'recent',
       label: 'Recent',
@@ -41,12 +45,22 @@ export function ConversationFolders({
     },
   ];
 
+  const projectFolders = projects.map((p) => ({
+    id: `project_${p.id}`,
+    label: p.name,
+    icon: FolderKanban,
+    filter: (c: Conversation) =>
+      !isArchived(c.id) && (assignments[c.id] === p.id || c.projectId === p.id),
+  }));
+
+  const FOLDERS = [...baseFolders, ...projectFolders];
+
   return (
     <div className="space-y-0.5">
       {FOLDERS.map((folder) => {
         const isOpen = openFolder === folder.id;
         const items = conversations.filter(folder.filter);
-        const FolderIcon = isOpen ? FolderOpen : Folder;
+        const FolderIcon = folder.icon === FolderKanban ? FolderKanban : isOpen ? FolderOpen : Folder;
 
         return (
           <div key={folder.id}>
@@ -56,8 +70,8 @@ export function ConversationFolders({
                          text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <ChevronRight className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-              <folder.icon className="w-3.5 h-3.5" />
-              <span className="flex-1 text-left">{folder.label}</span>
+              <FolderIcon className="w-3.5 h-3.5" />
+              <span className="flex-1 text-left truncate">{folder.label}</span>
               {items.length > 0 && (
                 <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full">{items.length}</span>
               )}
