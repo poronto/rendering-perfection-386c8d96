@@ -26,7 +26,7 @@ interface ChatSidebarProps {
   projectAssignments?: Record<string, string>;
 }
 
-const navItems = [
+const navItems: Array<{ icon: any; label: string; action: string; badge?: string; expandable?: boolean }> = [
   { icon: MessageCircle, label: 'Chat', action: 'chat' },
   { icon: Sparkles, label: 'Personas', action: 'personas' },
   { icon: FolderKanban, label: 'Projects', action: 'projects' },
