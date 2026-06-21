@@ -104,14 +104,15 @@ export function useMemory() {
       if (wpMode) {
         const ok = await deleteMemoryFromWP(id);
         if (!ok) return false;
-      } else {
-        const next = readMemories().filter((m) => m.id !== id);
-        writeMemories(next);
+        await refresh();
+        return true;
       }
-      setMemories((prev) => prev.filter((m) => m.id !== id));
+      const next = readMemories().filter((m) => m.id !== id);
+      writeMemories(next);
+      setMemories(next);
       return true;
     },
-    [wpMode],
+    [wpMode, refresh],
   );
 
   const clearAll = useCallback(async () => {

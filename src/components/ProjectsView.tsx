@@ -17,20 +17,21 @@ export function ProjectsView({ onBackToChat }: ProjectsViewProps) {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       toast.error('Name is required');
       return;
     }
-    if (name.length > 80) {
+    if (trimmedName.length > 80) {
       toast.error('Name must be under 80 characters');
       return;
     }
     setSaving(true);
     try {
       const p = await createProject({
-        name,
-        description,
-        customInstructions: instructions,
+        name: trimmedName,
+        description: description.trim(),
+        customInstructions: instructions.trim(),
       });
       if (p) {
         toast.success('Project created');
@@ -38,9 +39,13 @@ export function ProjectsView({ onBackToChat }: ProjectsViewProps) {
         setDescription('');
         setInstructions('');
         setShowForm(false);
+      } else {
+        toast.error('Failed to create project — server returned no project');
       }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create project');
+      // Surface the real server message (e.g. "Project name is required") instead of "error 400".
+      const msg = err?.message ? String(err.message).replace(/^aicpp_user_create_project\s+error:\s*/i, '') : 'Failed to create project';
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
