@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Trophy, User, Gift, Globe, ChevronDown, Search, Plus, X, LogOut, Sun, Moon, Sparkles, MoreVertical, Star, Archive, Trash2, FolderKanban, Brain } from 'lucide-react';
+import { MessageCircle, Database, User, Gift, Globe, ChevronDown, Search, Plus, X, LogOut, Sun, Moon, Sparkles, MoreVertical, Star, Archive, Trash2, FolderKanban, Brain } from 'lucide-react';
 import { Conversation, Persona, Project } from '@/lib/types';
 import { ConversationFolders } from './ConversationFolders';
 import { useTheme } from '@/hooks/useTheme';
 import { useConversationFlags } from '@/hooks/useConversationFlags';
 
-export type SidebarView = 'chat' | 'leaderboard' | 'profile' | 'refer' | 'personas' | 'projects' | 'memory';
+export type SidebarView = 'chat' | 'datasources' | 'profile' | 'refer' | 'personas' | 'projects' | 'memory';
 
 interface ChatSidebarProps {
   conversations: Conversation[];
@@ -31,7 +31,7 @@ const navItems = [
   { icon: Sparkles, label: 'Personas', action: 'personas' },
   { icon: FolderKanban, label: 'Projects', action: 'projects' },
   { icon: Brain, label: 'Memory', action: 'memory' },
-  { icon: Trophy, label: 'Leaderboard', badge: 'BETA', action: 'leaderboard' },
+  { icon: Database, label: 'Connect Data Sources', action: 'datasources' },
   { icon: User, label: 'Profile', action: 'profile' },
   { icon: Gift, label: 'Refer for rewards', action: 'refer' },
   { icon: Globe, label: 'Contact us', expandable: true, action: 'findus' },

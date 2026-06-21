@@ -6,7 +6,8 @@ import { ChatMessages } from '@/components/ChatMessages';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { PersonaGallery } from '@/components/PersonaGallery';
 import { SpecializedModesBar, SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
-import { LeaderboardView, ProfileView, ReferView } from '@/components/SidebarViews';
+import { ProfileView, ReferView } from '@/components/SidebarViews';
+import { DataSourcesView } from '@/components/DataSourcesView';
 import { ProjectsView } from '@/components/ProjectsView';
 import { MemoryView } from '@/components/MemoryView';
 import { ProjectPicker } from '@/components/ProjectPicker';
@@ -291,8 +292,8 @@ const Index = () => {
           )}
         </header>
 
-        {activeView === 'leaderboard' ? (
-          <LeaderboardView onBackToChat={() => setActiveView('chat')} />
+        {activeView === 'datasources' ? (
+          <DataSourcesView onBackToChat={() => setActiveView('chat')} />
         ) : activeView === 'profile' ? (
           <ProfileView onBackToChat={() => setActiveView('chat')} />
         ) : activeView === 'refer' ? (

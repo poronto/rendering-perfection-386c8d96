@@ -72,7 +72,6 @@ export async function sendMessageToWP(
   formData.append('persona_id', String(personaId || config.personaId));
   formData.append('message', message);
   formData.append('session_id', config.sessionId);
-  
 
   if (attachment) {
     formData.append('has_attachment', '1');
@@ -81,21 +80,10 @@ export async function sendMessageToWP(
     if (attachment.data) formData.append('attachment_data', attachment.data);
   }
 
-  const response = await fetch(config.ajaxurl, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Server error: ${response.status}`);
-  }
-
+  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
+  if (!response.ok) throw new Error(`Server error: ${response.status}`);
   const result = await response.json();
-
-  if (!result.success) {
-    throw new Error(result.data?.message || 'Chat request failed');
-  }
-
+  if (!result.success) throw new Error(result.data?.message || 'Chat request failed');
   return result.data.message;
 }
 
@@ -117,10 +105,8 @@ export async function uploadFileToWP(file: File): Promise<{
 
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   if (!response.ok) throw new Error(`Upload error: ${response.status}`);
-
   const result = await response.json();
   if (!result.success) throw new Error(result.data?.message || 'Upload failed');
-
   return result.data;
 }
 
@@ -137,10 +123,8 @@ export async function transcribeAudioWP(audioBlob: Blob): Promise<string> {
 
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   if (!response.ok) throw new Error(`Transcription error: ${response.status}`);
-
   const result = await response.json();
   if (!result.success) throw new Error(result.data?.message || 'Transcription failed');
-
   return result.data.text;
 }
 
@@ -166,12 +150,9 @@ export async function getMyPersonasFromWP(): Promise<WPPersona[]> {
 
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   if (!response.ok) throw new Error(`Persona request failed: ${response.status}`);
-
   const result = await response.json();
   if (!result.success) throw new Error(result.data?.message || 'Unable to load personas');
-
-  const personas = Array.isArray(result.data?.personas) ? result.data.personas : [];
-  return personas;
+  return Array.isArray(result.data?.personas) ? result.data.personas : [];
 }
 
 // ===================== CONVERSATIONS =====================
@@ -193,12 +174,10 @@ export interface WPMessage {
 export async function getConversationsFromWP(): Promise<WPConversation[]> {
   const config = getWPConfig();
   if (!config) return [];
-
   const formData = new FormData();
   formData.append('action', 'aicpp_get_conversations');
   formData.append('nonce', config.nonce);
   formData.append('session_id', config.sessionId);
-
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   const result = await response.json();
   return result.success ? result.data.conversations : [];
@@ -211,12 +190,10 @@ export async function loadConversationFromWP(conversationId: number): Promise<{
 } | null> {
   const config = getWPConfig();
   if (!config) return null;
-
   const formData = new FormData();
   formData.append('action', 'aicpp_load_conversation');
   formData.append('nonce', config.nonce);
   formData.append('conversation_id', String(conversationId));
-
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   const result = await response.json();
   return result.success ? result.data : null;
@@ -225,12 +202,10 @@ export async function loadConversationFromWP(conversationId: number): Promise<{
 export async function deleteConversationFromWP(conversationId: number): Promise<boolean> {
   const config = getWPConfig();
   if (!config) return false;
-
   const formData = new FormData();
   formData.append('action', 'aicpp_delete_conversation');
   formData.append('nonce', config.nonce);
   formData.append('conversation_id', String(conversationId));
-
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   const result = await response.json();
   return result.success;
@@ -257,10 +232,8 @@ export async function registerUserWP(data: {
 
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   if (!response.ok) throw new Error(`Registration error: ${response.status}`);
-
   const result = await response.json();
   if (!result.success) throw new Error(result.data?.message || 'Registration failed');
-
   return result.data;
 }
 
@@ -276,28 +249,19 @@ export async function loginUserWP(data: { login: string; password: string }): Pr
 
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   if (!response.ok) throw new Error(`Login error: ${response.status}`);
-
   const result = await response.json();
   if (!result.success) throw new Error(result.data?.message || 'Login failed');
-
   return result.data;
 }
 
 // ===================== WP USER INFO =====================
 
-/** Check if WP user is logged in (cookie-based, detected via localized data) */
 export function getWPUserInfo(): { isLoggedIn: boolean; displayName: string } {
   const w = window as any;
   if (w.versace22_chat?.user_logged_in) {
-    return {
-      isLoggedIn: true,
-      displayName: w.versace22_chat.user_display_name || 'User',
-    };
+    return { isLoggedIn: true, displayName: w.versace22_chat.user_display_name || 'User' };
   }
-  // If we're in WP but not logged in, guests can still chat
-  if (w.versace22_chat) {
-    return { isLoggedIn: false, displayName: 'Guest' };
-  }
+  if (w.versace22_chat) return { isLoggedIn: false, displayName: 'Guest' };
   return { isLoggedIn: false, displayName: 'Guest' };
 }
 
@@ -306,15 +270,7 @@ export function isWPUserLoggedIn(): boolean {
   return !!w.versace22_chat?.user_logged_in;
 }
 
-// ===================== PROJECTS =====================
-
-export interface WPProject {
-  id: number | string;
-  name: string;
-  description?: string;
-  custom_instructions?: string;
-  created_at?: string;
-}
+// ===================== GENERIC AJAX HELPER =====================
 
 async function wpAjax(action: string, params: Record<string, string> = {}) {
   const config = getWPConfig();
@@ -330,10 +286,20 @@ async function wpAjax(action: string, params: Record<string, string> = {}) {
   return result.data;
 }
 
+// ===================== PROJECTS (user-scoped) =====================
+
+export interface WPProject {
+  id: number | string;
+  name: string;
+  description?: string;
+  custom_instructions?: string;
+  created_at?: string;
+}
+
 export async function getProjectsFromWP(): Promise<WPProject[]> {
   if (!isWordPress()) return [];
   try {
-    const data = await wpAjax('aicpp_get_projects');
+    const data = await wpAjax('aicpp_user_list_projects');
     return Array.isArray(data?.projects) ? data.projects : [];
   } catch (err) {
     console.error('getProjectsFromWP failed:', err);
@@ -346,17 +312,24 @@ export async function createProjectInWP(project: {
   description?: string;
   custom_instructions?: string;
 }): Promise<WPProject | null> {
-  const data = await wpAjax('aicpp_create_project', {
+  const data = await wpAjax('aicpp_user_create_project', {
     name: project.name,
     description: project.description || '',
     custom_instructions: project.custom_instructions || '',
   });
-  return data?.project || null;
+  return data?.id
+    ? {
+        id: data.id,
+        name: project.name,
+        description: project.description || '',
+        custom_instructions: project.custom_instructions || '',
+      }
+    : null;
 }
 
 export async function deleteProjectFromWP(id: string | number): Promise<boolean> {
   try {
-    await wpAjax('aicpp_delete_project', { project_id: String(id) });
+    await wpAjax('aicpp_user_delete_project', { project_id: String(id) });
     return true;
   } catch {
     return false;
@@ -368,7 +341,7 @@ export async function assignConversationProjectWP(
   projectId: string | number | null,
 ): Promise<boolean> {
   try {
-    await wpAjax('aicpp_assign_conversation_project', {
+    await wpAjax('aicpp_user_assign_conversation_project', {
       conversation_id: String(conversationId),
       project_id: projectId === null ? '' : String(projectId),
     });
@@ -378,7 +351,7 @@ export async function assignConversationProjectWP(
   }
 }
 
-// ===================== MEMORY =====================
+// ===================== MEMORY (user-scoped) =====================
 
 export interface WPMemoryItem {
   id: number | string;
@@ -389,7 +362,7 @@ export interface WPMemoryItem {
 export async function getMemoriesFromWP(): Promise<WPMemoryItem[]> {
   if (!isWordPress()) return [];
   try {
-    const data = await wpAjax('aicpp_get_memories');
+    const data = await wpAjax('aicpp_user_get_memories');
     return Array.isArray(data?.memories) ? data.memories : [];
   } catch (err) {
     console.error('getMemoriesFromWP failed:', err);
@@ -398,22 +371,74 @@ export async function getMemoriesFromWP(): Promise<WPMemoryItem[]> {
 }
 
 export async function addMemoryToWP(content: string): Promise<WPMemoryItem | null> {
-  const data = await wpAjax('aicpp_add_memory', { content });
-  return data?.memory || null;
+  const data = await wpAjax('aicpp_user_add_memory', { content });
+  return data?.id ? { id: data.id, content } : null;
 }
 
 export async function deleteMemoryFromWP(id: string | number): Promise<boolean> {
   try {
-    await wpAjax('aicpp_delete_memory', { memory_id: String(id) });
+    await wpAjax('aicpp_user_delete_memory', { memory_id: String(id) });
     return true;
   } catch {
     return false;
   }
 }
 
+/** No server "clear all" endpoint — loop deletes over the current ids. */
 export async function clearMemoriesInWP(): Promise<boolean> {
   try {
-    await wpAjax('aicpp_clear_memories');
+    const items = await getMemoriesFromWP();
+    await Promise.all(items.map((m) => deleteMemoryFromWP(m.id)));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ===================== DATA SOURCES (user-scoped) =====================
+
+export interface WPDataSource {
+  id: number | string;
+  provider: string;
+  label: string;
+  status?: string;
+  created_at?: string;
+}
+
+export async function listDataSourcesWP(): Promise<WPDataSource[]> {
+  if (!isWordPress()) return [];
+  try {
+    const d = await wpAjax('aicpp_user_list_data_sources');
+    return Array.isArray(d?.sources) ? d.sources : [];
+  } catch (e) {
+    console.error('listDataSourcesWP', e);
+    return [];
+  }
+}
+
+export async function connectDataSourceWP(p: {
+  provider: string;
+  label?: string;
+  credentials?: string;
+}): Promise<WPDataSource | null> {
+  try {
+    const d = await wpAjax('aicpp_user_connect_data_source', {
+      provider: p.provider,
+      label: p.label || '',
+      credentials: p.credentials || '',
+    });
+    return d?.id
+      ? { id: d.id, provider: p.provider, label: p.label || p.provider, status: 'connected' }
+      : null;
+  } catch (e) {
+    console.error('connectDataSourceWP', e);
+    return null;
+  }
+}
+
+export async function disconnectDataSourceWP(id: string | number): Promise<boolean> {
+  try {
+    await wpAjax('aicpp_user_disconnect_data_source', { source_id: String(id) });
     return true;
   } catch {
     return false;
