@@ -274,3 +274,97 @@ if (!function_exists('versace22_ajax_clear_memories')) {
     }
     add_action('wp_ajax_aicpp_clear_memories', 'versace22_ajax_clear_memories');
 }
+
+// ============================================================
+// USER-SCOPED ACTION ALIASES (aicpp_user_*)
+//
+// The React frontend in src/lib/wp-api.ts calls aicpp_user_* action names so
+// it never collides with the admin-only handlers registered by the main
+// ai-chat-persona-pro plugin on aicpp_get_projects / aicpp_get_memories / etc.
+// These aliases reuse the login-only, user-scoped callbacks defined above.
+// ============================================================
+add_action('wp_ajax_aicpp_user_list_projects',                'versace22_ajax_get_projects');
+add_action('wp_ajax_aicpp_user_create_project',               'versace22_ajax_create_project');
+add_action('wp_ajax_aicpp_user_delete_project',               'versace22_ajax_delete_project');
+add_action('wp_ajax_aicpp_user_assign_conversation_project',  'versace22_ajax_assign_conversation_project');
+add_action('wp_ajax_aicpp_user_get_memories',                 'versace22_ajax_get_memories');
+add_action('wp_ajax_aicpp_user_add_memory',                   'versace22_ajax_add_memory');
+add_action('wp_ajax_aicpp_user_delete_memory',                'versace22_ajax_delete_memory');
+
+// ============================================================
+// DATA SOURCES (user-scoped) — schema + handlers
+// ============================================================
+if (!function_exists('versace22_data_sources_install_schema')) {
+    function versace22_data_sources_install_schema() {
+        global $wpdb;
+        $charset = $wpdb->get_charset_collate();
+        $table = $wpdb->prefix . 'aicpp_user_data_sources';
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        dbDelta("CREATE TABLE {$table} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            user_id bigint(20) unsigned NOT NULL,
+            provider varchar(64) NOT NULL,
+            label varchar(190) NULL,
+            credentials longtext NULL,
+            status varchar(32) NOT NULL DEFAULT 'connected',
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY user_id (user_id),
+            KEY provider (provider)
+        ) $charset;");
+    }
+    add_action('plugins_loaded', 'versace22_data_sources_install_schema');
+}
+
+if (!function_exists('versace22_ajax_list_data_sources')) {
+    function versace22_ajax_list_data_sources() {
+        $user_id = versace22_projects_check_request();
+        global $wpdb;
+        $table = $wpdb->prefix . 'aicpp_user_data_sources';
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, provider, label, status, created_at FROM {$table}
+             WHERE user_id = %d ORDER BY created_at DESC",
+            $user_id
+        ), ARRAY_A);
+        wp_send_json_success(array('sources' => $rows ?: array()));
+    }
+    add_action('wp_ajax_aicpp_user_list_data_sources', 'versace22_ajax_list_data_sources');
+}
+
+if (!function_exists('versace22_ajax_connect_data_source')) {
+    function versace22_ajax_connect_data_source() {
+        $user_id = versace22_projects_check_request();
+        $provider = isset($_POST['provider']) ? sanitize_key(wp_unslash($_POST['provider'])) : '';
+        $label = isset($_POST['label']) ? sanitize_text_field(wp_unslash($_POST['label'])) : '';
+        $creds = isset($_POST['credentials']) ? sanitize_textarea_field(wp_unslash($_POST['credentials'])) : '';
+        if ($provider === '') wp_send_json_error(array('message' => 'Provider is required'));
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'aicpp_user_data_sources';
+        $ok = $wpdb->insert($table, array(
+            'user_id' => $user_id,
+            'provider' => $provider,
+            'label' => $label !== '' ? $label : $provider,
+            'credentials' => $creds,
+            'status' => 'connected',
+            'created_at' => current_time('mysql'),
+        ), array('%d', '%s', '%s', '%s', '%s', '%s'));
+        if (!$ok) wp_send_json_error(array('message' => 'Failed to connect data source'));
+        wp_send_json_success(array('id' => (int) $wpdb->insert_id));
+    }
+    add_action('wp_ajax_aicpp_user_connect_data_source', 'versace22_ajax_connect_data_source');
+}
+
+if (!function_exists('versace22_ajax_disconnect_data_source')) {
+    function versace22_ajax_disconnect_data_source() {
+        $user_id = versace22_projects_check_request();
+        $sid = isset($_POST['source_id']) ? (int) $_POST['source_id'] : 0;
+        if ($sid <= 0) wp_send_json_error(array('message' => 'Invalid source id'));
+        global $wpdb;
+        $table = $wpdb->prefix . 'aicpp_user_data_sources';
+        $deleted = $wpdb->delete($table, array('id' => $sid, 'user_id' => $user_id), array('%d', '%d'));
+        if ($deleted === false) wp_send_json_error(array('message' => 'Delete failed'));
+        wp_send_json_success(array('deleted' => (int) $deleted));
+    }
+    add_action('wp_ajax_aicpp_user_disconnect_data_source', 'versace22_ajax_disconnect_data_source');
+}
