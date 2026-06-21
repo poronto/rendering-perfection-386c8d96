@@ -108,7 +108,8 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
           <Database className="w-10 h-10 text-primary mx-auto" />
           <h2 className="text-2xl font-bold text-foreground">Connect Data Sources</h2>
           <p className="text-sm text-muted-foreground">
-            Bring your tools into VERSACE22 AI. Connect once, reference anywhere in chat.
+            Token-based connections. Paste an API key/token and we store it encrypted against your account.
+            OAuth sign-in (e.g. “Sign in with Google”) is coming separately.
           </p>
         </div>
 
@@ -199,15 +200,18 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-sm text-muted-foreground">{modal.description}</p>
+            <p className="text-sm text-muted-foreground">
+              Paste an API key/token for {modal.name}. This does <strong>not</strong> sign you into your {modal.name} account —
+              true OAuth sign-in is a separate flow coming later.
+            </p>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-foreground">Label (optional)</label>
               <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={modal.name} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">API key / access token (optional)</label>
+              <label className="text-xs font-medium text-foreground">API key / access token</label>
               <Input value={creds} onChange={(e) => setCreds(e.target.value)} type="password" placeholder="Paste credentials" />
-              <p className="text-[11px] text-muted-foreground">Stored securely against your account. Leave blank to set up later.</p>
+              <p className="text-[11px] text-muted-foreground">Stored encrypted against your WordPress account. Leave blank to set up later.</p>
             </div>
             <div className="flex gap-2 pt-2">
               <button

@@ -77,14 +77,16 @@ export function useMemory() {
       if (!trimmed) return null;
       if (wpMode) {
         const created = await addMemoryToWP(trimmed);
-        if (!created) return null;
-        const item: MemoryItem = {
+        if (!created) {
+          throw new Error("Couldn't save — try again");
+        }
+        // Re-fetch from server so the list reflects DB truth, not optimistic state.
+        await refresh();
+        return {
           id: String(created.id),
           content: created.content,
           createdAt: created.created_at ? new Date(created.created_at) : new Date(),
-        };
-        setMemories((prev) => [item, ...prev]);
-        return item;
+        } as MemoryItem;
       }
       const item: MemoryItem = {
         id: 'mem_' + crypto.randomUUID(),
@@ -96,7 +98,7 @@ export function useMemory() {
       setMemories(next);
       return item;
     },
-    [wpMode],
+    [wpMode, refresh],
   );
 
   const deleteMemory = useCallback(
@@ -104,14 +106,15 @@ export function useMemory() {
       if (wpMode) {
         const ok = await deleteMemoryFromWP(id);
         if (!ok) return false;
-      } else {
-        const next = readMemories().filter((m) => m.id !== id);
-        writeMemories(next);
+        await refresh();
+        return true;
       }
-      setMemories((prev) => prev.filter((m) => m.id !== id));
+      const next = readMemories().filter((m) => m.id !== id);
+      writeMemories(next);
+      setMemories(next);
       return true;
     },
-    [wpMode],
+    [wpMode, refresh],
   );
 
   const clearAll = useCallback(async () => {
