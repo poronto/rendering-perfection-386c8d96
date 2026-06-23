@@ -363,7 +363,13 @@ export async function getMemoriesFromWP(): Promise<WPMemoryItem[]> {
   if (!isWordPress()) return [];
   try {
     const data = await wpAjax('aicpp_user_get_memories');
-    return Array.isArray(data?.memories) ? data.memories : [];
+    const raw = Array.isArray(data?.memories) ? data.memories : [];
+    // PHP rows use `memory_text`; normalize to `content` for the React layer.
+    return raw.map((m: any) => ({
+      id: m.id,
+      content: m.content ?? m.memory_text ?? '',
+      created_at: m.created_at,
+    }));
   } catch (err) {
     console.error('getMemoriesFromWP failed:', err);
     return [];
@@ -371,7 +377,8 @@ export async function getMemoriesFromWP(): Promise<WPMemoryItem[]> {
 }
 
 export async function addMemoryToWP(content: string): Promise<WPMemoryItem | null> {
-  const data = await wpAjax('aicpp_user_add_memory', { content });
+  // PHP handler requires `memory_text` (422 otherwise). Send both for safety.
+  const data = await wpAjax('aicpp_user_add_memory', { memory_text: content, content });
   return data?.id ? { id: data.id, content } : null;
 }
 
