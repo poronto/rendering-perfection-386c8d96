@@ -173,16 +173,29 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {available.map((s) => {
               const Icon = s.icon;
+              const isSupported = s.supported !== false;
               return (
                 <div key={s.key} className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors">
                   <Icon className={`w-6 h-6 ${s.color}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{s.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground truncate">{s.name}</p>
+                      {!isSupported && (
+                        <span className="text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          Coming soon
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">{s.description}</p>
                   </div>
                   <button
-                    onClick={() => openConnect(s)}
-                    className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors flex items-center gap-1"
+                    onClick={() => isSupported && openConnect(s)}
+                    disabled={!isSupported}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 ${
+                      isSupported
+                        ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                        : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                    }`}
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Connect
@@ -190,6 +203,7 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
                 </div>
               );
             })}
+
             {available.length === 0 && (
               <p className="col-span-full text-center text-sm text-muted-foreground py-8">
                 All available sources are connected.
