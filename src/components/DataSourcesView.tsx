@@ -67,11 +67,19 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
 
   const handleConnect = async () => {
     if (!modal) return;
+    if (modal.supported === false) {
+      toast.error(`${modal.name} is coming soon — backend support not enabled yet.`);
+      return;
+    }
     setSaving(true);
     try {
       if (wp) {
-        const ok = await connectDataSourceWP({ provider: modal.key, label, credentials: creds });
-        if (!ok) { toast.error('Failed to connect'); return; }
+        try {
+          await connectDataSourceWP({ provider: modal.key, label, credentials: creds });
+        } catch (err: any) {
+          toast.error(err?.message || 'Failed to connect');
+          return;
+        }
       } else {
         // Standalone fallback: keep in local state only
         setConnected((prev) => [
@@ -85,6 +93,7 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
       if (wp) refresh();
     } finally { setSaving(false); }
   };
+
 
   const handleDisconnect = async (src: WPDataSource) => {
     if (wp) {
