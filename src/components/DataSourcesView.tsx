@@ -34,6 +34,7 @@ const CATALOG: Source[] = [
   { key: 'coworker_bot', name: 'Coworker Bot', description: 'Send messages from inside Slack', icon: MessageSquare, authProvider: 'slack', authLabel: 'Slack Authentication', authMode: 'oauth' },
   { key: 'google_calendar', name: 'Google Calendar', description: 'Events and meeting schedules', icon: Calendar, authProvider: 'google', authLabel: 'Google Authentication', authMode: 'oauth' },
   { key: 'google_drive', name: 'Google Drive + Gmail', description: 'Files, folders, and Gmail', icon: Cloud, authProvider: 'google', authLabel: 'Google Authentication', authMode: 'oauth' },
+  { key: 'github', name: 'GitHub', description: 'Repositories, issues, and pull requests', icon: Layers, authProvider: 'github', authLabel: 'GitHub Authentication', authMode: 'oauth' },
   { key: 'hubspot_read', name: 'HubSpot (Read)', description: 'Contacts, deals, and activities', icon: Users, authProvider: 'hubspot_read', authLabel: 'HubSpot Authentication', authMode: 'oauth' },
   { key: 'hubspot_write', name: 'HubSpot (Write)', description: 'Create, update, and delete HubSpot records', icon: Users, authProvider: 'hubspot_write', authLabel: 'HubSpot Authentication', authMode: 'oauth' },
   { key: 'intercom', name: 'Intercom', description: 'Conversations, contacts, and help center articles', icon: Headphones, authProvider: 'intercom', authLabel: 'Intercom Authentication', authMode: 'oauth' },
@@ -43,7 +44,7 @@ const CATALOG: Source[] = [
   { key: 'postgres', name: 'PostgreSQL', description: 'PostgreSQL database queries', icon: Database, authProvider: 'postgres', authLabel: 'PostgreSQL Authentication', authMode: 'credentials' },
   { key: 'salesforce', name: 'Salesforce', description: 'Customer records and sales data', icon: Building2, authProvider: 'salesforce', authLabel: 'Salesforce Authentication', authMode: 'oauth' },
   { key: 'slack', name: 'Slack', description: 'Messages and channel information', icon: MessageSquare, authProvider: 'slack', authLabel: 'Slack Authentication', authMode: 'oauth' },
-  { key: 'gitlab', name: 'Gitlab', description: 'Repositories, issues, and merge requests', icon: Layers, authProvider: 'gitlab', authLabel: 'GitLab Authentication', authMode: 'oauth', badge: 'Enterprise' },
+  { key: 'gitlab', name: 'GitLab', description: 'Repositories, issues, and merge requests', icon: Layers, authProvider: 'gitlab', authLabel: 'GitLab Authentication', authMode: 'oauth', badge: 'Enterprise' },
   { key: 'ashby', name: 'Ashby', description: 'Candidates, jobs, and interviews', icon: Briefcase, authProvider: 'ashby', authLabel: 'Ashby Authentication', authMode: 'oauth', badge: 'Enterprise' },
   { key: 'basecamp', name: 'Basecamp', description: 'Projects, to-dos, and messages', icon: Briefcase, authProvider: 'basecamp', authLabel: 'Basecamp Authentication', authMode: 'oauth', badge: 'Enterprise' },
   { key: 'bitbucket', name: 'Bitbucket', description: 'Repositories, commits, and pull requests', icon: Layers, authProvider: 'bitbucket', authLabel: 'Bitbucket Authentication', authMode: 'oauth', badge: 'Enterprise' },
@@ -76,6 +77,21 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
   };
 
   useEffect(() => { refresh(); }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connectedProvider = params.get('versace22_data_source_connected');
+    const connectError = params.get('versace22_data_source_error');
+    if (connectedProvider) toast.success(`${connectedProvider} authenticated`);
+    if (connectError) toast.error(`Authentication failed: ${connectError}`);
+    if (connectedProvider || connectError) {
+      params.delete('versace22_data_source_connected');
+      params.delete('versace22_data_source_error');
+      const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
+      window.history.replaceState({}, '', nextUrl);
+      refresh();
+    }
+  }, []);
 
   const connectedKeys = useMemo(() => new Set(connected.map((c) => c.provider)), [connected]);
   const available = CATALOG.filter((s) => !connectedKeys.has(s.key));
