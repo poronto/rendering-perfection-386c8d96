@@ -427,14 +427,28 @@ export async function connectDataSourceWP(p: {
   provider: string;
   label?: string;
   credentials?: string;
+  auth_type?: string;
 }): Promise<WPDataSource> {
   const d = await wpAjax('aicpp_user_connect_data_source', {
     provider: p.provider,
     label: p.label || '',
     credentials: p.credentials || '',
+    auth_type: p.auth_type || 'credentials',
   });
   if (!d?.id) throw new Error('Connection was not saved by the server.');
   return { id: d.id, provider: p.provider, label: p.label || p.provider, status: 'connected' };
+}
+
+export async function startDataSourceAuthWP(p: {
+  provider: string;
+  returnUrl?: string;
+}): Promise<{ auth_url: string }> {
+  const d = await wpAjax('aicpp_user_start_data_source_auth', {
+    provider: p.provider,
+    return_url: p.returnUrl || window.location.href,
+  });
+  if (!d?.auth_url) throw new Error('Authentication URL was not returned by the server.');
+  return { auth_url: d.auth_url };
 }
 
 
