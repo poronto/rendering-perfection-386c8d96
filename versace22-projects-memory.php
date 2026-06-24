@@ -294,6 +294,57 @@ add_action('wp_ajax_aicpp_user_delete_memory',                'versace22_ajax_de
 // ============================================================
 // DATA SOURCES (user-scoped) — schema + handlers
 // ============================================================
+if (!function_exists('versace22_data_source_providers')) {
+    function versace22_data_source_providers() {
+        return array(
+            'asana'            => array('name' => 'Asana', 'type' => 'oauth', 'auth_url' => 'https://app.asana.com/-/oauth_authorize', 'token_url' => 'https://app.asana.com/-/oauth_token', 'scope' => 'default'),
+            'bigquery'         => array('name' => 'Google', 'type' => 'oauth', 'auth_url' => 'https://accounts.google.com/o/oauth2/v2/auth', 'token_url' => 'https://oauth2.googleapis.com/token', 'scope' => 'openid email profile https://www.googleapis.com/auth/bigquery.readonly'),
+            'confluence'       => array('name' => 'Atlassian', 'type' => 'oauth', 'auth_url' => 'https://auth.atlassian.com/authorize', 'token_url' => 'https://auth.atlassian.com/oauth/token', 'scope' => 'read:me read:confluence-content.all offline_access', 'audience' => 'api.atlassian.com'),
+            'coworker_bot'     => array('name' => 'Slack', 'type' => 'oauth', 'auth_url' => 'https://slack.com/oauth/v2/authorize', 'token_url' => 'https://slack.com/api/oauth.v2.access', 'scope' => 'chat:write,channels:read,users:read'),
+            'google_calendar'  => array('name' => 'Google', 'type' => 'oauth', 'auth_url' => 'https://accounts.google.com/o/oauth2/v2/auth', 'token_url' => 'https://oauth2.googleapis.com/token', 'scope' => 'openid email profile https://www.googleapis.com/auth/calendar.readonly'),
+            'google_drive'     => array('name' => 'Google', 'type' => 'oauth', 'auth_url' => 'https://accounts.google.com/o/oauth2/v2/auth', 'token_url' => 'https://oauth2.googleapis.com/token', 'scope' => 'openid email profile https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.readonly'),
+            'github'           => array('name' => 'GitHub', 'type' => 'oauth', 'auth_url' => 'https://github.com/login/oauth/authorize', 'token_url' => 'https://github.com/login/oauth/access_token', 'scope' => 'repo read:user user:email'),
+            'hubspot_read'     => array('name' => 'HubSpot', 'type' => 'oauth', 'auth_url' => 'https://app.hubspot.com/oauth/authorize', 'token_url' => 'https://api.hubapi.com/oauth/v1/token', 'scope' => 'crm.objects.contacts.read crm.objects.deals.read'),
+            'hubspot_write'    => array('name' => 'HubSpot', 'type' => 'oauth', 'auth_url' => 'https://app.hubspot.com/oauth/authorize', 'token_url' => 'https://api.hubapi.com/oauth/v1/token', 'scope' => 'crm.objects.contacts.write crm.objects.deals.write'),
+            'intercom'         => array('name' => 'Intercom', 'type' => 'oauth', 'auth_url' => 'https://app.intercom.com/oauth', 'token_url' => 'https://api.intercom.io/auth/eagle/token', 'scope' => ''),
+            'jira'             => array('name' => 'Atlassian', 'type' => 'oauth', 'auth_url' => 'https://auth.atlassian.com/authorize', 'token_url' => 'https://auth.atlassian.com/oauth/token', 'scope' => 'read:me read:jira-work offline_access', 'audience' => 'api.atlassian.com'),
+            'linear'           => array('name' => 'Linear', 'type' => 'oauth', 'auth_url' => 'https://linear.app/oauth/authorize', 'token_url' => 'https://api.linear.app/oauth/token', 'scope' => 'read'),
+            'notion'           => array('name' => 'Notion', 'type' => 'oauth', 'auth_url' => 'https://api.notion.com/v1/oauth/authorize', 'token_url' => 'https://api.notion.com/v1/oauth/token', 'scope' => ''),
+            'salesforce'       => array('name' => 'Salesforce', 'type' => 'oauth', 'auth_url' => 'https://login.salesforce.com/services/oauth2/authorize', 'token_url' => 'https://login.salesforce.com/services/oauth2/token', 'scope' => 'api refresh_token'),
+            'slack'            => array('name' => 'Slack', 'type' => 'oauth', 'auth_url' => 'https://slack.com/oauth/v2/authorize', 'token_url' => 'https://slack.com/api/oauth.v2.access', 'scope' => 'channels:history,channels:read,chat:write,users:read'),
+            'gitlab'           => array('name' => 'GitLab', 'type' => 'oauth', 'auth_url' => 'https://gitlab.com/oauth/authorize', 'token_url' => 'https://gitlab.com/oauth/token', 'scope' => 'read_api'),
+            'bitbucket'        => array('name' => 'Bitbucket', 'type' => 'oauth', 'auth_url' => 'https://bitbucket.org/site/oauth2/authorize', 'token_url' => 'https://bitbucket.org/site/oauth2/access_token', 'scope' => 'repository issue'),
+            'basecamp'         => array('name' => 'Basecamp', 'type' => 'oauth', 'auth_url' => 'https://launchpad.37signals.com/authorization/new', 'token_url' => 'https://launchpad.37signals.com/authorization/token', 'scope' => ''),
+            'clickup'          => array('name' => 'ClickUp', 'type' => 'oauth', 'auth_url' => 'https://app.clickup.com/api', 'token_url' => 'https://api.clickup.com/api/v2/oauth/token', 'scope' => ''),
+            'front'            => array('name' => 'Front', 'type' => 'oauth', 'auth_url' => 'https://app.frontapp.com/oauth/authorize', 'token_url' => 'https://app.frontapp.com/oauth/token', 'scope' => ''),
+            'gong'             => array('name' => 'Gong', 'type' => 'oauth', 'auth_url' => 'https://app.gong.io/oauth2/authorize', 'token_url' => 'https://app.gong.io/oauth2/generate-customer-token', 'scope' => 'api:calls:read:basic api:calls:read:transcript'),
+            'monday'           => array('name' => 'Monday.com', 'type' => 'oauth', 'auth_url' => 'https://auth.monday.com/oauth2/authorize', 'token_url' => 'https://auth.monday.com/oauth2/token', 'scope' => 'boards:read updates:read'),
+            'pipedrive'        => array('name' => 'Pipedrive', 'type' => 'oauth', 'auth_url' => 'https://oauth.pipedrive.com/oauth/authorize', 'token_url' => 'https://oauth.pipedrive.com/oauth/token', 'scope' => ''),
+            'zendesk'          => array('name' => 'Zendesk', 'type' => 'oauth', 'auth_url' => '', 'token_url' => '', 'scope' => 'read'),
+            'ashby'            => array('name' => 'Ashby', 'type' => 'oauth', 'auth_url' => '', 'token_url' => '', 'scope' => ''),
+            'postgres'         => array('name' => 'PostgreSQL', 'type' => 'credentials'),
+            'granola'          => array('name' => 'Granola', 'type' => 'credentials'),
+            'snowflake'        => array('name' => 'Snowflake', 'type' => 'credentials'),
+        );
+    }
+}
+
+if (!function_exists('versace22_data_source_option')) {
+    function versace22_data_source_option($provider, $suffix) {
+        $key = strtoupper(preg_replace('/[^a-z0-9]+/i', '_', $provider));
+        $constant = 'VERSACE22_' . $key . '_' . $suffix;
+        if (defined($constant) && constant($constant) !== '') return constant($constant);
+        $value = get_option(strtolower($constant), '');
+        return is_string($value) ? trim($value) : '';
+    }
+}
+
+if (!function_exists('versace22_data_source_redirect_uri')) {
+    function versace22_data_source_redirect_uri() {
+        return admin_url('admin-ajax.php?action=aicpp_user_data_source_oauth_callback');
+    }
+}
+
 if (!function_exists('versace22_data_sources_install_schema')) {
     function versace22_data_sources_install_schema() {
         global $wpdb;
@@ -305,13 +356,32 @@ if (!function_exists('versace22_data_sources_install_schema')) {
             user_id bigint(20) unsigned NOT NULL,
             provider varchar(64) NOT NULL,
             label varchar(190) NULL,
+            auth_type varchar(32) NOT NULL DEFAULT 'oauth',
             credentials longtext NULL,
+            access_token longtext NULL,
+            refresh_token longtext NULL,
+            token_expires_at datetime NULL,
+            meta longtext NULL,
             status varchar(32) NOT NULL DEFAULT 'connected',
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY user_id (user_id),
             KEY provider (provider)
         ) $charset;");
+
+        $columns = $wpdb->get_col("SHOW COLUMNS FROM {$table}", 0);
+        $missing = array(
+            'auth_type'        => "ALTER TABLE {$table} ADD COLUMN auth_type varchar(32) NOT NULL DEFAULT 'oauth' AFTER label",
+            'access_token'     => "ALTER TABLE {$table} ADD COLUMN access_token longtext NULL AFTER credentials",
+            'refresh_token'    => "ALTER TABLE {$table} ADD COLUMN refresh_token longtext NULL AFTER access_token",
+            'token_expires_at' => "ALTER TABLE {$table} ADD COLUMN token_expires_at datetime NULL AFTER refresh_token",
+            'meta'             => "ALTER TABLE {$table} ADD COLUMN meta longtext NULL AFTER token_expires_at",
+        );
+        foreach ($missing as $column => $sql) {
+            if (!in_array($column, $columns, true)) {
+                $wpdb->query($sql);
+            }
+        }
     }
     add_action('plugins_loaded', 'versace22_data_sources_install_schema');
 }
@@ -337,7 +407,9 @@ if (!function_exists('versace22_ajax_connect_data_source')) {
         $provider = isset($_POST['provider']) ? sanitize_key(wp_unslash($_POST['provider'])) : '';
         $label = isset($_POST['label']) ? sanitize_text_field(wp_unslash($_POST['label'])) : '';
         $creds = isset($_POST['credentials']) ? sanitize_textarea_field(wp_unslash($_POST['credentials'])) : '';
+        $auth_type = isset($_POST['auth_type']) ? sanitize_key(wp_unslash($_POST['auth_type'])) : 'credentials';
         if ($provider === '') wp_send_json_error(array('message' => 'Provider is required'));
+        if ($creds === '') wp_send_json_error(array('message' => 'Authentication credentials are required'));
 
         global $wpdb;
         $table = $wpdb->prefix . 'aicpp_user_data_sources';
@@ -345,14 +417,120 @@ if (!function_exists('versace22_ajax_connect_data_source')) {
             'user_id' => $user_id,
             'provider' => $provider,
             'label' => $label !== '' ? $label : $provider,
+            'auth_type' => $auth_type,
             'credentials' => $creds,
             'status' => 'connected',
             'created_at' => current_time('mysql'),
-        ), array('%d', '%s', '%s', '%s', '%s', '%s'));
+        ), array('%d', '%s', '%s', '%s', '%s', '%s', '%s'));
         if (!$ok) wp_send_json_error(array('message' => 'Failed to connect data source'));
         wp_send_json_success(array('id' => (int) $wpdb->insert_id));
     }
     add_action('wp_ajax_aicpp_user_connect_data_source', 'versace22_ajax_connect_data_source');
+}
+
+if (!function_exists('versace22_ajax_start_data_source_auth')) {
+    function versace22_ajax_start_data_source_auth() {
+        $user_id = versace22_projects_check_request();
+        $provider = isset($_POST['provider']) ? sanitize_key(wp_unslash($_POST['provider'])) : '';
+        $return_url = isset($_POST['return_url']) ? esc_url_raw(wp_unslash($_POST['return_url'])) : home_url('/');
+        $providers = versace22_data_source_providers();
+        if ($provider === '' || empty($providers[$provider])) wp_send_json_error(array('message' => 'Unsupported data source'));
+        $cfg = $providers[$provider];
+        if (($cfg['type'] ?? '') !== 'oauth') wp_send_json_error(array('message' => 'This source uses credential authentication'));
+        if (empty($cfg['auth_url']) || empty($cfg['token_url'])) wp_send_json_error(array('message' => $cfg['name'] . ' OAuth endpoint is not configured yet.'));
+
+        $client_id = versace22_data_source_option($provider, 'CLIENT_ID');
+        $client_secret = versace22_data_source_option($provider, 'CLIENT_SECRET');
+        if ($client_id === '' || $client_secret === '') {
+            wp_send_json_error(array('message' => $cfg['name'] . ' OAuth credentials are not configured on this WordPress site.'));
+        }
+
+        $state = wp_generate_password(32, false, false);
+        set_transient('versace22_ds_oauth_' . $state, array(
+            'user_id' => $user_id,
+            'provider' => $provider,
+            'return_url' => $return_url,
+        ), 10 * MINUTE_IN_SECONDS);
+
+        $args = array(
+            'client_id' => $client_id,
+            'redirect_uri' => versace22_data_source_redirect_uri(),
+            'response_type' => 'code',
+            'state' => $state,
+        );
+        if (!empty($cfg['scope'])) $args['scope'] = $cfg['scope'];
+        if (!empty($cfg['audience'])) $args['audience'] = $cfg['audience'];
+        if (in_array($provider, array('google_drive', 'google_calendar', 'bigquery'), true)) {
+            $args['access_type'] = 'offline';
+            $args['prompt'] = 'consent';
+        }
+
+        wp_send_json_success(array('auth_url' => add_query_arg($args, $cfg['auth_url'])));
+    }
+    add_action('wp_ajax_aicpp_user_start_data_source_auth', 'versace22_ajax_start_data_source_auth');
+}
+
+if (!function_exists('versace22_ajax_data_source_oauth_callback')) {
+    function versace22_ajax_data_source_oauth_callback() {
+        $code = isset($_GET['code']) ? sanitize_text_field(wp_unslash($_GET['code'])) : '';
+        $state = isset($_GET['state']) ? sanitize_text_field(wp_unslash($_GET['state'])) : '';
+        $error = isset($_GET['error']) ? sanitize_text_field(wp_unslash($_GET['error'])) : '';
+        $payload = $state ? get_transient('versace22_ds_oauth_' . $state) : false;
+        if (!$payload) wp_die('Authentication session expired. Please try again.');
+        delete_transient('versace22_ds_oauth_' . $state);
+        $return_url = !empty($payload['return_url']) ? esc_url_raw($payload['return_url']) : home_url('/');
+        if ($error !== '') wp_safe_redirect(add_query_arg('versace22_data_source_error', rawurlencode($error), $return_url));
+        if ($error !== '') exit;
+        if ($code === '') wp_die('Missing authorization code.');
+
+        $providers = versace22_data_source_providers();
+        $provider = sanitize_key($payload['provider']);
+        if (empty($providers[$provider])) wp_die('Unsupported data source.');
+        $cfg = $providers[$provider];
+        $client_id = versace22_data_source_option($provider, 'CLIENT_ID');
+        $client_secret = versace22_data_source_option($provider, 'CLIENT_SECRET');
+
+        $body = array(
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => versace22_data_source_redirect_uri(),
+            'client_id' => $client_id,
+            'client_secret' => $client_secret,
+        );
+        $headers = array('Accept' => 'application/json');
+        if ($provider === 'notion') {
+            $headers['Authorization'] = 'Basic ' . base64_encode($client_id . ':' . $client_secret);
+            unset($body['client_id'], $body['client_secret']);
+        }
+
+        $response = wp_remote_post($cfg['token_url'], array('timeout' => 20, 'headers' => $headers, 'body' => $body));
+        if (is_wp_error($response)) wp_die(esc_html($response->get_error_message()));
+        $status = (int) wp_remote_retrieve_response_code($response);
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        if ($status < 200 || $status >= 300 || empty($data['access_token'])) {
+            wp_die('Authentication failed: ' . esc_html(wp_remote_retrieve_body($response)));
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'aicpp_user_data_sources';
+        $expires_at = !empty($data['expires_in']) ? gmdate('Y-m-d H:i:s', time() + (int) $data['expires_in']) : null;
+        $wpdb->insert($table, array(
+            'user_id' => (int) $payload['user_id'],
+            'provider' => $provider,
+            'label' => $cfg['name'],
+            'auth_type' => 'oauth',
+            'access_token' => $data['access_token'],
+            'refresh_token' => isset($data['refresh_token']) ? $data['refresh_token'] : null,
+            'token_expires_at' => $expires_at,
+            'meta' => wp_json_encode($data),
+            'status' => 'connected',
+            'created_at' => current_time('mysql'),
+        ), array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'));
+
+        wp_safe_redirect(add_query_arg('versace22_data_source_connected', rawurlencode($provider), $return_url));
+        exit;
+    }
+    add_action('wp_ajax_aicpp_user_data_source_oauth_callback', 'versace22_ajax_data_source_oauth_callback');
 }
 
 if (!function_exists('versace22_ajax_disconnect_data_source')) {
