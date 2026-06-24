@@ -427,21 +427,16 @@ export async function connectDataSourceWP(p: {
   provider: string;
   label?: string;
   credentials?: string;
-}): Promise<WPDataSource | null> {
-  try {
-    const d = await wpAjax('aicpp_user_connect_data_source', {
-      provider: p.provider,
-      label: p.label || '',
-      credentials: p.credentials || '',
-    });
-    return d?.id
-      ? { id: d.id, provider: p.provider, label: p.label || p.provider, status: 'connected' }
-      : null;
-  } catch (e) {
-    console.error('connectDataSourceWP', e);
-    return null;
-  }
+}): Promise<WPDataSource> {
+  const d = await wpAjax('aicpp_user_connect_data_source', {
+    provider: p.provider,
+    label: p.label || '',
+    credentials: p.credentials || '',
+  });
+  if (!d?.id) throw new Error('Connection was not saved by the server.');
+  return { id: d.id, provider: p.provider, label: p.label || p.provider, status: 'connected' };
 }
+
 
 export async function disconnectDataSourceWP(id: string | number): Promise<boolean> {
   try {
