@@ -17,6 +17,7 @@ interface Source {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
+  supported?: boolean; // backend (versace22-enqueue.php) currently only stores credentials for notion + jira
 }
 
 const CATALOG: Source[] = [
@@ -27,14 +28,15 @@ const CATALOG: Source[] = [
   { key: 'google_drive', name: 'Google Drive + Gmail', description: 'Docs, sheets & email',     icon: Cloud,         color: 'text-amber-500' },
   { key: 'hubspot',      name: 'HubSpot',         description: 'CRM contacts & deals',          icon: Users,         color: 'text-orange-500' },
   { key: 'intercom',     name: 'Intercom',        description: 'Customer conversations',        icon: Headphones,    color: 'text-indigo-500' },
-  { key: 'jira',         name: 'Jira',            description: 'Issues and sprints',            icon: Layers,        color: 'text-blue-600' },
+  { key: 'jira',         name: 'Jira',            description: 'Issues and sprints',            icon: Layers,        color: 'text-blue-600', supported: true },
   { key: 'linear',       name: 'Linear',          description: 'Issues, projects & cycles',     icon: Layers,        color: 'text-violet-500' },
-  { key: 'notion',       name: 'Notion',          description: 'Pages & databases',             icon: FileText,      color: 'text-foreground' },
+  { key: 'notion',       name: 'Notion',          description: 'Pages & databases',             icon: FileText,      color: 'text-foreground', supported: true },
   { key: 'postgres',     name: 'PostgreSQL',      description: 'Read-only SQL access',          icon: Database,      color: 'text-cyan-600' },
   { key: 'salesforce',   name: 'Salesforce',      description: 'Accounts, leads & opps',        icon: Building2,     color: 'text-sky-600' },
   { key: 'slack',        name: 'Slack',           description: 'Channels & DMs',                icon: MessageSquare, color: 'text-fuchsia-500' },
   { key: 'gmail',        name: 'Gmail',           description: 'Email search & drafts',         icon: Mail,          color: 'text-red-500' },
 ];
+
 
 export function DataSourcesView({ onBackToChat }: ViewProps) {
   const wp = isWordPress();
