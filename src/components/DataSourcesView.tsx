@@ -17,6 +17,7 @@ interface Source {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
+  supported?: boolean; // backend (versace22-enqueue.php) currently only stores credentials for notion + jira
 }
 
 const CATALOG: Source[] = [
@@ -27,14 +28,15 @@ const CATALOG: Source[] = [
   { key: 'google_drive', name: 'Google Drive + Gmail', description: 'Docs, sheets & email',     icon: Cloud,         color: 'text-amber-500' },
   { key: 'hubspot',      name: 'HubSpot',         description: 'CRM contacts & deals',          icon: Users,         color: 'text-orange-500' },
   { key: 'intercom',     name: 'Intercom',        description: 'Customer conversations',        icon: Headphones,    color: 'text-indigo-500' },
-  { key: 'jira',         name: 'Jira',            description: 'Issues and sprints',            icon: Layers,        color: 'text-blue-600' },
+  { key: 'jira',         name: 'Jira',            description: 'Issues and sprints',            icon: Layers,        color: 'text-blue-600', supported: true },
   { key: 'linear',       name: 'Linear',          description: 'Issues, projects & cycles',     icon: Layers,        color: 'text-violet-500' },
-  { key: 'notion',       name: 'Notion',          description: 'Pages & databases',             icon: FileText,      color: 'text-foreground' },
+  { key: 'notion',       name: 'Notion',          description: 'Pages & databases',             icon: FileText,      color: 'text-foreground', supported: true },
   { key: 'postgres',     name: 'PostgreSQL',      description: 'Read-only SQL access',          icon: Database,      color: 'text-cyan-600' },
   { key: 'salesforce',   name: 'Salesforce',      description: 'Accounts, leads & opps',        icon: Building2,     color: 'text-sky-600' },
   { key: 'slack',        name: 'Slack',           description: 'Channels & DMs',                icon: MessageSquare, color: 'text-fuchsia-500' },
   { key: 'gmail',        name: 'Gmail',           description: 'Email search & drafts',         icon: Mail,          color: 'text-red-500' },
 ];
+
 
 export function DataSourcesView({ onBackToChat }: ViewProps) {
   const wp = isWordPress();
@@ -65,11 +67,19 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
 
   const handleConnect = async () => {
     if (!modal) return;
+    if (modal.supported === false) {
+      toast.error(`${modal.name} is coming soon — backend support not enabled yet.`);
+      return;
+    }
     setSaving(true);
     try {
       if (wp) {
-        const ok = await connectDataSourceWP({ provider: modal.key, label, credentials: creds });
-        if (!ok) { toast.error('Failed to connect'); return; }
+        try {
+          await connectDataSourceWP({ provider: modal.key, label, credentials: creds });
+        } catch (err: any) {
+          toast.error(err?.message || 'Failed to connect');
+          return;
+        }
       } else {
         // Standalone fallback: keep in local state only
         setConnected((prev) => [
@@ -83,6 +93,7 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
       if (wp) refresh();
     } finally { setSaving(false); }
   };
+
 
   const handleDisconnect = async (src: WPDataSource) => {
     if (wp) {
@@ -162,16 +173,29 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {available.map((s) => {
               const Icon = s.icon;
+              const isSupported = s.supported !== false;
               return (
                 <div key={s.key} className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors">
                   <Icon className={`w-6 h-6 ${s.color}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{s.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground truncate">{s.name}</p>
+                      {!isSupported && (
+                        <span className="text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          Coming soon
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">{s.description}</p>
                   </div>
                   <button
-                    onClick={() => openConnect(s)}
-                    className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors flex items-center gap-1"
+                    onClick={() => isSupported && openConnect(s)}
+                    disabled={!isSupported}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 ${
+                      isSupported
+                        ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                        : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                    }`}
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Connect
@@ -179,6 +203,7 @@ export function DataSourcesView({ onBackToChat }: ViewProps) {
                 </div>
               );
             })}
+
             {available.length === 0 && (
               <p className="col-span-full text-center text-sm text-muted-foreground py-8">
                 All available sources are connected.

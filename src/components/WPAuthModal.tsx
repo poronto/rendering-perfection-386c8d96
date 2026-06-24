@@ -40,7 +40,13 @@ export function WPAuthModal({ blocking = true, onClose }: WPAuthModalProps) {
       toast.success('Account created!');
       refreshAfterAuth();
     } catch (error: any) {
-      toast.error(error.message || 'Registration failed');
+      const msg = String(error?.message || 'Registration failed');
+      if (/disabled/i.test(msg)) {
+        toast.error('Account signups are currently turned off by the site admin.');
+      } else {
+        toast.error(msg);
+      }
+
       setLoading(false);
     }
   };
