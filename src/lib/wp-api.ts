@@ -416,7 +416,11 @@ export async function listDataSourcesWP(): Promise<WPDataSource[]> {
   if (!isWordPress()) return [];
   try {
     const d = await wpAjax('aicpp_user_list_data_sources');
-    return Array.isArray(d?.sources) ? d.sources : [];
+    return Array.isArray(d?.data_sources)
+      ? d.data_sources
+      : Array.isArray(d?.sources)
+        ? d.sources
+        : [];
   } catch (e) {
     console.error('listDataSourcesWP', e);
     return [];
