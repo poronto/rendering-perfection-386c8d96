@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Copy, Check, RefreshCw, ExternalLink } from 'lucide-react';
+import { Copy, Check, RefreshCw, ExternalLink, FileBox, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Message } from '@/lib/types';
 import { MarkdownMessage } from './MarkdownMessage';
 import { StreamingMessage } from './StreamingMessage';
+import { ResultArtifactPanel, parseArtifacts, type Artifact } from './ResultArtifactPanel';
+import { rateEngineResponse } from '@/lib/wp-api';
 import { toast } from 'sonner';
 
 interface ChatMessagesProps {
@@ -66,67 +68,122 @@ function CitationLinks({ content }: { content: string }) {
   );
 }
 
+function RatingButtons({ messageId }: { messageId: string }) {
+  const [rated, setRated] = useState<number | null>(null);
+  const send = async (value: number) => {
+    if (rated !== null) return;
+    setRated(value);
+    const ok = await rateEngineResponse(value, { message_id: messageId });
+    if (ok) toast.success('Thanks for the feedback');
+  };
+  return (
+    <>
+      <button
+        onClick={() => send(1)}
+        disabled={rated !== null}
+        className={`p-1 rounded hover:bg-muted transition-colors ${
+          rated === 1 ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+        }`}
+        title="Good response"
+      >
+        <ThumbsUp className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={() => send(0)}
+        disabled={rated !== null}
+        className={`p-1 rounded hover:bg-muted transition-colors ${
+          rated === 0 ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
+        }`}
+        title="Bad response"
+      >
+        <ThumbsDown className="w-3.5 h-3.5" />
+      </button>
+    </>
+  );
+}
+
 export function ChatMessages({ messages, isTyping, streamingMessageId, onRegenerate }: ChatMessagesProps) {
+  const [openArtifact, setOpenArtifact] = useState<Artifact | null>(null);
   if (messages.length === 0 && !isTyping) return null;
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-      {messages.map((msg, i) => (
-        <div
-          key={msg.id}
-          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          style={{
-            animation: `fade-up 0.4s cubic-bezier(0.16,1,0.3,1) ${i * 0.05}s both`,
-          }}
-        >
-          {msg.role === 'assistant' && (
-            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center
-                            text-[11px] font-bold text-primary mr-2.5 mt-1 shrink-0">
-              {msg.persona?.avatar?.charAt(0) || 'A'}
-            </div>
-          )}
-          <div className="flex flex-col max-w-[75%]">
-            <div
-              className={`rounded-2xl px-4 py-3 text-sm leading-relaxed
-                ${msg.role === 'user'
-                  ? 'bg-chat-user text-foreground rounded-br-md'
-                  : 'bg-chat-ai text-foreground rounded-bl-md'
-                }`}
-            >
-              {msg.role === 'assistant' && msg.id === streamingMessageId ? (
-                <StreamingMessage content={msg.content} />
-              ) : msg.role === 'assistant' ? (
-                <>
-                  <MarkdownMessage content={msg.content} />
-                  <CitationLinks content={msg.content} />
-                </>
-              ) : (
-                <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.content}</p>
-              )}
-            </div>
+      {messages.map((msg, i) => {
+        const isAssistant = msg.role === 'assistant';
+        const isStreaming = isAssistant && msg.id === streamingMessageId;
+        const { stripped, artifacts } = isAssistant && !isStreaming
+          ? parseArtifacts(msg.content)
+          : { stripped: msg.content, artifacts: [] as Artifact[] };
 
-            {/* Copy / Regenerate toolbar for AI messages */}
-            {msg.role === 'assistant' && msg.id !== streamingMessageId && (
-              <div className="flex items-center gap-1 mt-1 ml-1 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity"
-                   style={{ opacity: undefined }}
-                   onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                   onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
-              >
-                <CopyButton text={msg.content} />
-                {onRegenerate && (
-                  <button
-                    onClick={() => onRegenerate(i)}
-                    className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                    title="Regenerate response"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  </button>
-                )}
+        return (
+          <div
+            key={msg.id}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            style={{ animation: `fade-up 0.4s cubic-bezier(0.16,1,0.3,1) ${i * 0.05}s both` }}
+          >
+            {isAssistant && (
+              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center
+                              text-[11px] font-bold text-primary mr-2.5 mt-1 shrink-0">
+                {msg.persona?.avatar?.charAt(0) || 'A'}
               </div>
             )}
+            <div className="flex flex-col max-w-[75%]">
+              <div
+                className={`rounded-2xl px-4 py-3 text-sm leading-relaxed
+                  ${msg.role === 'user'
+                    ? 'bg-chat-user text-foreground rounded-br-md'
+                    : 'bg-chat-ai text-foreground rounded-bl-md'
+                  }`}
+              >
+                {isStreaming ? (
+                  <StreamingMessage content={msg.content} />
+                ) : isAssistant ? (
+                  <>
+                    {stripped && <MarkdownMessage content={stripped} />}
+                    <CitationLinks content={stripped} />
+                    {artifacts.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border/50">
+                        {artifacts.map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() => setOpenArtifact(a)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium
+                                       bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                          >
+                            <FileBox className="w-3 h-3" />
+                            View {a.type} — {a.title.length > 30 ? a.title.slice(0, 30) + '…' : a.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.content}</p>
+                )}
+              </div>
+
+              {isAssistant && !isStreaming && (
+                <div className="flex items-center gap-1 mt-1 ml-1 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity"
+                     onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                     onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
+                >
+                  <CopyButton text={stripped || msg.content} />
+                  {onRegenerate && (
+                    <button
+                      onClick={() => onRegenerate(i)}
+                      className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title="Regenerate response"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <RatingButtons messageId={String(msg.id)} />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {isTyping && (
         <div className="flex justify-start" style={{ animation: 'fade-up 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
@@ -145,6 +202,9 @@ export function ChatMessages({ messages, isTyping, streamingMessageId, onRegener
           </div>
         </div>
       )}
+
+      <ResultArtifactPanel artifact={openArtifact} onClose={() => setOpenArtifact(null)} />
     </div>
   );
 }
+

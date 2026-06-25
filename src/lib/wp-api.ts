@@ -416,7 +416,11 @@ export async function listDataSourcesWP(): Promise<WPDataSource[]> {
   if (!isWordPress()) return [];
   try {
     const d = await wpAjax('aicpp_user_list_data_sources');
-    return Array.isArray(d?.sources) ? d.sources : [];
+    return Array.isArray(d?.data_sources)
+      ? d.data_sources
+      : Array.isArray(d?.sources)
+        ? d.sources
+        : [];
   } catch (e) {
     console.error('listDataSourcesWP', e);
     return [];
@@ -454,9 +458,32 @@ export async function startDataSourceAuthWP(p: {
 
 export async function disconnectDataSourceWP(id: string | number): Promise<boolean> {
   try {
-    await wpAjax('aicpp_user_disconnect_data_source', { source_id: String(id) });
+    await wpAjax('aicpp_user_disconnect_data_source', {
+      data_source_id: String(id),
+      source_id: String(id),
+    });
     return true;
   } catch {
+    return false;
+  }
+}
+
+// ===================== SMART ENGINE RATING =====================
+
+export async function rateEngineResponse(
+  rating: number,
+  context?: { conversation_id?: string | number; message_id?: string | number; model?: string },
+): Promise<boolean> {
+  if (!isWordPress()) return false;
+  try {
+    const params: Record<string, string> = { rating: String(rating) };
+    if (context?.conversation_id != null) params.conversation_id = String(context.conversation_id);
+    if (context?.message_id != null) params.message_id = String(context.message_id);
+    if (context?.model) params.model = context.model;
+    await wpAjax('aicpp_engine_rate', params);
+    return true;
+  } catch (e) {
+    console.error('rateEngineResponse failed:', e);
     return false;
   }
 }
