@@ -798,9 +798,28 @@ if (!class_exists('AICPP_User_Endpoints_Inline')) {
             $provider    = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
             $label       = sanitize_text_field(wp_unslash($_POST['label'] ?? ''));
             $credentials = trim((string) wp_unslash($_POST['credentials'] ?? ''));
-            $allowed = array('notion', 'jira');
+            // Defect A fix: widen allowed providers to match the React frontend catalog (28 sources).
+            // 'generic' is the catch-all for any custom API-key connector.
+            $allowed = array(
+                'generic',
+                'notion', 'jira', 'confluence', 'asana', 'trello', 'monday', 'clickup', 'linear',
+                'slack', 'discord', 'teams', 'zoom',
+                'github', 'gitlab', 'bitbucket',
+                'google_drive', 'gmail', 'gcalendar', 'gdocs', 'gsheets',
+                'dropbox', 'onedrive', 'box',
+                'salesforce', 'hubspot', 'zendesk', 'intercom', 'pipedrive',
+                'airtable', 'shopify', 'stripe', 'mailchimp',
+                'figma', 'miro',
+                'sharepoint', 'outlook',
+            );
+            // Allow site owners to extend without forking the bridge.
+            $allowed = apply_filters('versace22_data_source_allowed_providers', $allowed);
             if (!in_array($provider, $allowed, true) || $credentials === '') {
-                wp_send_json_error(array('message' => 'provider and credentials required'), 422);
+                wp_send_json_error(array(
+                    'message'  => 'provider and credentials required',
+                    'provider' => $provider,
+                    'allowed'  => $allowed,
+                ), 422);
             }
             if ($label === '') $label = ucfirst($provider);
             $enc = $this->enc($credentials);
