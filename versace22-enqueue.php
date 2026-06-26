@@ -789,12 +789,37 @@ if (!class_exists('AICPP_User_Endpoints_Inline')) {
             $provider    = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
             $label       = sanitize_text_field(wp_unslash($_POST['label'] ?? ''));
             $credentials = trim((string) wp_unslash($_POST['credentials'] ?? ''));
-            $allowed = array('notion', 'jira');
-            if (!in_array($provider, $allowed, true) || $credentials === '') {
-                wp_send_json_error(array('message' => 'provider and credentials required'), 422);
+            $auth_type   = sanitize_key(wp_unslash($_POST['auth_type'] ?? 'credentials'));
+
+            // DEFECT A FIX: full provider catalog matching the React frontend (28 providers + generic catch-all).
+            // Filterable so future providers can be added without editing this file.
+            $default_allowed = array(
+                'generic',
+                'notion','jira','confluence','asana','trello','monday','clickup','linear',
+                'slack','discord','teams','zoom',
+                'github','gitlab','bitbucket',
+                'google_drive','gmail','gcalendar','gdocs','gsheets',
+                'dropbox','onedrive','box','sharepoint','outlook',
+                'salesforce','hubspot','zendesk','intercom','pipedrive',
+                'airtable','shopify','stripe','mailchimp','figma','miro',
+            );
+            $allowed = apply_filters('versace22_data_source_allowed_providers', $default_allowed);
+
+            if ($provider === '' || !in_array($provider, $allowed, true)) {
+                wp_send_json_error(array(
+                    'message'  => 'Unsupported provider.',
+                    'provider' => $provider,
+                    'allowed'  => $allowed,
+                ), 422);
+            }
+            // OAuth providers connect via aicpp_user_start_data_source_auth and may legitimately
+            // arrive here with empty credentials (token saved by the OAuth callback). Only require
+            // credentials for the explicit credentials/API-key path.
+            if ($auth_type === 'credentials' && $credentials === '') {
+                wp_send_json_error(array('message' => 'credentials required for this provider'), 422);
             }
             if ($label === '') $label = ucfirst($provider);
-            $enc = $this->enc($credentials);
+            $enc = $credentials !== '' ? $this->enc($credentials) : '';
             $ok = $wpdb->insert($t, array(
                 'user_id'     => get_current_user_id(),
                 'provider'    => $provider,
