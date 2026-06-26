@@ -82,7 +82,7 @@ if (!defined('VERSACE22_ENQUEUE_MIN_AI_CHAT_VERSION')) {
 // AI Chat Persona Pro version compatibility ceiling
 // Updated to v12.3 to match current plugin release
 if (!defined('VERSACE22_ENQUEUE_MAX_AI_CHAT_VERSION')) {
-    define('VERSACE22_ENQUEUE_MAX_AI_CHAT_VERSION', '12.5');
+    define('VERSACE22_ENQUEUE_MAX_AI_CHAT_VERSION', '12.4');
 }
 function versace22_enqueue_check_compatibility() {
     if (!defined('AI_CHAT_PERSONA_PRO_VERSION')) {
@@ -351,15 +351,6 @@ if (!function_exists('versace22_endpoint_manifest')) {
                 array('update_profile',      'aicpp_update_profile',      'aicpp_chat',  'read',           false),
                 array('login',               'aicpp_login_user',          'aicpp_login', '',               true),
                 array('register',            'aicpp_register_user',       'aicpp_register','',             true),
-            ),
-            'data_sources' => array(
-                array('list',                'aicpp_ds_list',              'aicpp_chat',  'read',           false),
-                array('connect',             'aicpp_ds_connect',           'aicpp_chat',  'read',           false),
-                array('disconnect',          'aicpp_ds_disconnect',        'aicpp_chat',  'read',           false),
-                array('test',                'aicpp_ds_test',              'aicpp_chat',  'read',           false),
-            ),
-            'engine' => array(
-                array('rate',                'aicpp_engine_rate',          'aicpp_chat',  'read',           true),
             ),
             'models' => array(
                 array('free_models',         'aicpp_or_free_models',      'aicpp',  'manage_options', false),
@@ -798,28 +789,9 @@ if (!class_exists('AICPP_User_Endpoints_Inline')) {
             $provider    = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
             $label       = sanitize_text_field(wp_unslash($_POST['label'] ?? ''));
             $credentials = trim((string) wp_unslash($_POST['credentials'] ?? ''));
-            // Defect A fix: widen allowed providers to match the React frontend catalog (28 sources).
-            // 'generic' is the catch-all for any custom API-key connector.
-            $allowed = array(
-                'generic',
-                'notion', 'jira', 'confluence', 'asana', 'trello', 'monday', 'clickup', 'linear',
-                'slack', 'discord', 'teams', 'zoom',
-                'github', 'gitlab', 'bitbucket',
-                'google_drive', 'gmail', 'gcalendar', 'gdocs', 'gsheets',
-                'dropbox', 'onedrive', 'box',
-                'salesforce', 'hubspot', 'zendesk', 'intercom', 'pipedrive',
-                'airtable', 'shopify', 'stripe', 'mailchimp',
-                'figma', 'miro',
-                'sharepoint', 'outlook',
-            );
-            // Allow site owners to extend without forking the bridge.
-            $allowed = apply_filters('versace22_data_source_allowed_providers', $allowed);
+            $allowed = array('notion', 'jira');
             if (!in_array($provider, $allowed, true) || $credentials === '') {
-                wp_send_json_error(array(
-                    'message'  => 'provider and credentials required',
-                    'provider' => $provider,
-                    'allowed'  => $allowed,
-                ), 422);
+                wp_send_json_error(array('message' => 'provider and credentials required'), 422);
             }
             if ($label === '') $label = ucfirst($provider);
             $enc = $this->enc($credentials);
