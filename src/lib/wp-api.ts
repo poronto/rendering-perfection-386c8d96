@@ -1,11 +1,24 @@
 /**
- * WordPress AJAX API bridge
- * Reads config injected by versace22-enqueue.php via wp_localize_script
+ * WordPress AJAX API bridge — v12.5.1-compatible
+ *
+ * Reads config injected by versace22-enqueue.php via wp_localize_script.
+ *
+ * Bridge contract (v12.5.1):
+ *  - window.versace22_chat (+ window.aicppChat alias)
+ *  - nonces: per-group bundle { aicpp_chat, aicpp_login, aicpp_register, aicpp }
+ *  - endpoints: action manifest grouped by feature
+ *  - can: capability flags
+ *  - Data sources: notion + jira only, credentials required, NO OAuth start endpoint
+ *  - Memory: per-persona, columns memory_text + enabled
+ *  - Projects: list/create/update/delete + assign_conversation_project
  */
+
+// ===================== CONFIG =====================
 
 interface WPConfig {
   ajaxurl: string;
-  nonce: string;
+  nonce: string;                       // chat-group nonce — default for most calls
+  nonces: Record<string, string>;      // full bundle keyed by group
   personaId: number;
   sessionId: string;
   loginUrl?: string;
@@ -17,20 +30,22 @@ interface WPConfig {
 
 function getWPConfig(): WPConfig | null {
   const w = window as any;
-  if (w.versace22_chat) {
-    return {
-      ajaxurl: w.versace22_chat.ajaxurl || w.versace22_chat.ajax_url,
-      nonce: w.versace22_chat.nonce,
-      personaId: parseInt(w.versace22_chat.persona_id, 10) || 1,
-      sessionId: w.versace22_chat.session_id || 'sess_' + crypto.randomUUID(),
-      loginUrl: w.versace22_chat.login_url,
-      registerUrl: w.versace22_chat.register_url,
-      logoutUrl: w.versace22_chat.logout_url,
-      loginNonce: w.versace22_chat.login_nonce,
-      registerNonce: w.versace22_chat.register_nonce,
-    };
-  }
-  return null;
+  const cfg = w.versace22_chat || w.aicppChat; // bridge sets both globals
+  if (!cfg) return null;
+  const nonces = (cfg.nonces && typeof cfg.nonces === 'object') ? cfg.nonces : {};
+  const chatNonce = nonces.aicpp_chat || cfg.nonce || '';
+  return {
+    ajaxurl: cfg.ajaxurl || cfg.ajax_url,
+    nonce: chatNonce,
+    nonces,
+    personaId: parseInt(cfg.persona_id, 10) || 1,
+    sessionId: cfg.session_id || 'sess_' + crypto.randomUUID(),
+    loginUrl: cfg.login_url,
+    registerUrl: cfg.register_url,
+    logoutUrl: cfg.logout_url,
+    loginNonce: nonces.aicpp_login || cfg.login_nonce,
+    registerNonce: nonces.aicpp_register || cfg.register_nonce,
+  };
 }
 
 export function isWordPress(): boolean {
@@ -54,6 +69,50 @@ export function getWPAuthLinks(): { loginUrl: string; registerUrl: string; logou
     registerUrl: config?.registerUrl || `${origin}/wp-login.php?action=register`,
     logoutUrl: config?.logoutUrl || `${origin}/wp-login.php?action=logout`,
   };
+}
+
+// ===================== CAPABILITY FLAGS =====================
+
+export function getWPCapabilities() {
+  const w = window as any;
+  const can = (w.versace22_chat || w.aicppChat)?.can || {};
+  return {
+    canChat: can.chat !== false,
+    canUpload: can.upload !== false,
+    canVoice: can.voice !== false,
+    canHistory: can.history !== false,
+    canMemories: !!can.memories,
+    canCreateProject: !!can.create_project,
+    canArtifacts: !!can.artifacts,
+    canReferrals: !!can.referrals,
+    canLeaderboard: !!can.leaderboard,
+    isAdmin: !!can.admin,
+    canLogin: !!can.login,
+    canRegister: !!can.register,
+  };
+}
+
+// ===================== GENERIC AJAX HELPER =====================
+
+type NonceGroup = 'aicpp_chat' | 'aicpp_login' | 'aicpp_register' | 'aicpp';
+
+async function wpAjax(
+  action: string,
+  params: Record<string, string> = {},
+  nonceGroup: NonceGroup = 'aicpp_chat',
+) {
+  const config = getWPConfig();
+  if (!config) throw new Error('WordPress config not available');
+  const nonce = config.nonces[nonceGroup] || config.nonce;
+  const formData = new FormData();
+  formData.append('action', action);
+  formData.append('nonce', nonce);
+  for (const [k, v] of Object.entries(params)) formData.append(k, v);
+  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
+  if (!response.ok) throw new Error(`${action} error: ${response.status}`);
+  const result = await response.json();
+  if (!result.success) throw new Error(result.data?.message || `${action} failed`);
+  return result.data;
 }
 
 // ===================== CHAT =====================
@@ -97,12 +156,10 @@ export async function uploadFileToWP(file: File): Promise<{
 }> {
   const config = getWPConfig();
   if (!config) throw new Error('WordPress config not available');
-
   const formData = new FormData();
   formData.append('action', 'aicpp_upload_file');
   formData.append('nonce', config.nonce);
   formData.append('file', file);
-
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   if (!response.ok) throw new Error(`Upload error: ${response.status}`);
   const result = await response.json();
@@ -115,12 +172,10 @@ export async function uploadFileToWP(file: File): Promise<{
 export async function transcribeAudioWP(audioBlob: Blob): Promise<string> {
   const config = getWPConfig();
   if (!config) throw new Error('WordPress config not available');
-
   const formData = new FormData();
   formData.append('action', 'aicpp_transcribe_audio');
   formData.append('nonce', config.nonce);
   formData.append('audio', audioBlob, 'recording.webm');
-
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   if (!response.ok) throw new Error(`Transcription error: ${response.status}`);
   const result = await response.json();
@@ -143,11 +198,9 @@ export interface WPPersona {
 export async function getMyPersonasFromWP(): Promise<WPPersona[]> {
   const config = getWPConfig();
   if (!config) return [];
-
   const formData = new FormData();
   formData.append('action', 'aicpp_get_my_personas');
   formData.append('nonce', config.nonce);
-
   const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
   if (!response.ok) throw new Error(`Persona request failed: ${response.status}`);
   const result = await response.json();
@@ -211,7 +264,7 @@ export async function deleteConversationFromWP(conversationId: number): Promise<
   return result.success;
 }
 
-// ===================== USER REGISTRATION =====================
+// ===================== AUTH (group-specific nonces) =====================
 
 export async function registerUserWP(data: {
   username: string;
@@ -219,71 +272,43 @@ export async function registerUserWP(data: {
   password: string;
   display_name?: string;
 }): Promise<{ user_id: number; display_name: string }> {
-  const config = getWPConfig();
-  if (!config) throw new Error('WordPress config not available');
-
-  const formData = new FormData();
-  formData.append('action', 'aicpp_register_user');
-  formData.append('nonce', config.registerNonce || config.nonce);
-  formData.append('username', data.username);
-  formData.append('email', data.email);
-  formData.append('password', data.password);
-  if (data.display_name) formData.append('display_name', data.display_name);
-
-  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
-  if (!response.ok) throw new Error(`Registration error: ${response.status}`);
-  const result = await response.json();
-  if (!result.success) throw new Error(result.data?.message || 'Registration failed');
-  return result.data;
+  return wpAjax(
+    'aicpp_register_user',
+    {
+      username: data.username,
+      email: data.email,
+      password: data.password,
+      ...(data.display_name ? { display_name: data.display_name } : {}),
+    },
+    'aicpp_register',
+  );
 }
 
-export async function loginUserWP(data: { login: string; password: string }): Promise<{ user_id: number; display_name: string }> {
-  const config = getWPConfig();
-  if (!config) throw new Error('WordPress config not available');
-
-  const formData = new FormData();
-  formData.append('action', 'aicpp_login_user');
-  formData.append('nonce', config.loginNonce || config.nonce);
-  formData.append('login', data.login);
-  formData.append('password', data.password);
-
-  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
-  if (!response.ok) throw new Error(`Login error: ${response.status}`);
-  const result = await response.json();
-  if (!result.success) throw new Error(result.data?.message || 'Login failed');
-  return result.data;
+export async function loginUserWP(data: {
+  login: string;
+  password: string;
+}): Promise<{ user_id: number; display_name: string }> {
+  return wpAjax(
+    'aicpp_login_user',
+    { login: data.login, password: data.password },
+    'aicpp_login',
+  );
 }
 
 // ===================== WP USER INFO =====================
 
 export function getWPUserInfo(): { isLoggedIn: boolean; displayName: string } {
   const w = window as any;
-  if (w.versace22_chat?.user_logged_in) {
-    return { isLoggedIn: true, displayName: w.versace22_chat.user_display_name || 'User' };
+  const cfg = w.versace22_chat || w.aicppChat;
+  if (cfg?.user_logged_in) {
+    return { isLoggedIn: true, displayName: cfg.user_display_name || 'User' };
   }
-  if (w.versace22_chat) return { isLoggedIn: false, displayName: 'Guest' };
   return { isLoggedIn: false, displayName: 'Guest' };
 }
 
 export function isWPUserLoggedIn(): boolean {
   const w = window as any;
-  return !!w.versace22_chat?.user_logged_in;
-}
-
-// ===================== GENERIC AJAX HELPER =====================
-
-async function wpAjax(action: string, params: Record<string, string> = {}) {
-  const config = getWPConfig();
-  if (!config) throw new Error('WordPress config not available');
-  const formData = new FormData();
-  formData.append('action', action);
-  formData.append('nonce', config.nonce);
-  for (const [k, v] of Object.entries(params)) formData.append(k, v);
-  const response = await fetch(config.ajaxurl, { method: 'POST', body: formData });
-  if (!response.ok) throw new Error(`${action} error: ${response.status}`);
-  const result = await response.json();
-  if (!result.success) throw new Error(result.data?.message || `${action} failed`);
-  return result.data;
+  return !!(w.versace22_chat || w.aicppChat)?.user_logged_in;
 }
 
 // ===================== PROJECTS (user-scoped) =====================
@@ -327,6 +352,25 @@ export async function createProjectInWP(project: {
     : null;
 }
 
+export async function updateProjectInWP(p: {
+  id: string | number;
+  name: string;
+  description?: string;
+  custom_instructions?: string;
+}): Promise<boolean> {
+  try {
+    await wpAjax('aicpp_user_update_project', {
+      project_id: String(p.id),
+      name: p.name,
+      description: p.description || '',
+      custom_instructions: p.custom_instructions || '',
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function deleteProjectFromWP(id: string | number): Promise<boolean> {
   try {
     await wpAjax('aicpp_user_delete_project', { project_id: String(id) });
@@ -351,11 +395,12 @@ export async function assignConversationProjectWP(
   }
 }
 
-// ===================== MEMORY (user-scoped) =====================
+// ===================== MEMORY (user-scoped, per-persona) =====================
 
 export interface WPMemoryItem {
   id: number | string;
   content: string;
+  enabled?: boolean;
   created_at?: string;
 }
 
@@ -364,10 +409,11 @@ export async function getMemoriesFromWP(): Promise<WPMemoryItem[]> {
   try {
     const data = await wpAjax('aicpp_user_get_memories');
     const raw = Array.isArray(data?.memories) ? data.memories : [];
-    // PHP rows use `memory_text`; normalize to `content` for the React layer.
+    // PHP rows use `memory_text` + `enabled`; normalize for the React layer.
     return raw.map((m: any) => ({
       id: m.id,
       content: m.content ?? m.memory_text ?? '',
+      enabled: m.enabled == null ? true : !!Number(m.enabled),
       created_at: m.created_at,
     }));
   } catch (err) {
@@ -377,9 +423,32 @@ export async function getMemoriesFromWP(): Promise<WPMemoryItem[]> {
 }
 
 export async function addMemoryToWP(content: string): Promise<WPMemoryItem | null> {
-  // PHP handler requires `memory_text` (422 otherwise). Send both for safety.
-  const data = await wpAjax('aicpp_user_add_memory', { memory_text: content, content });
+  const personaId = getWPPersonaId();
+  // PHP handler requires `memory_text` (422 otherwise). Scope to the active persona.
+  const data = await wpAjax('aicpp_user_add_memory', {
+    memory_text: content,
+    content,
+    persona_id: String(personaId),
+  });
   return data?.id ? { id: data.id, content } : null;
+}
+
+export async function updateMemoryInWP(id: string | number, content: string): Promise<boolean> {
+  try {
+    await wpAjax('aicpp_user_update_memory', { memory_id: String(id), memory_text: content });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function toggleMemoryInWP(id: string | number): Promise<boolean> {
+  try {
+    await wpAjax('aicpp_user_toggle_memory', { memory_id: String(id) });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function deleteMemoryFromWP(id: string | number): Promise<boolean> {
@@ -391,7 +460,7 @@ export async function deleteMemoryFromWP(id: string | number): Promise<boolean> 
   }
 }
 
-/** No server "clear all" endpoint — loop deletes over the current ids. */
+/** No server "clear all" endpoint in v12.5.1 — loop-delete the current ids. */
 export async function clearMemoriesInWP(): Promise<boolean> {
   try {
     const items = await getMemoriesFromWP();
@@ -403,6 +472,14 @@ export async function clearMemoriesInWP(): Promise<boolean> {
 }
 
 // ===================== DATA SOURCES (user-scoped) =====================
+// v12.5.1 bridge: notion + jira ONLY, credentials REQUIRED, NO OAuth start endpoint.
+
+export const SUPPORTED_DATA_SOURCE_PROVIDERS = [
+  { id: 'notion', label: 'Notion' },
+  { id: 'jira', label: 'Jira' },
+] as const;
+
+export type SupportedProvider = typeof SUPPORTED_DATA_SOURCE_PROVIDERS[number]['id'];
 
 export interface WPDataSource {
   id: number | string;
@@ -416,11 +493,7 @@ export async function listDataSourcesWP(): Promise<WPDataSource[]> {
   if (!isWordPress()) return [];
   try {
     const d = await wpAjax('aicpp_user_list_data_sources');
-    return Array.isArray(d?.data_sources)
-      ? d.data_sources
-      : Array.isArray(d?.sources)
-        ? d.sources
-        : [];
+    return Array.isArray(d?.data_sources) ? d.data_sources : [];
   } catch (e) {
     console.error('listDataSourcesWP', e);
     return [];
@@ -428,45 +501,33 @@ export async function listDataSourcesWP(): Promise<WPDataSource[]> {
 }
 
 export async function connectDataSourceWP(p: {
-  provider: string;
+  provider: SupportedProvider;
   label?: string;
-  credentials?: string;
-  auth_type?: string;
+  credentials: string; // REQUIRED by v12.5.1 — no OAuth bypass
 }): Promise<WPDataSource> {
+  if (!p.credentials || !p.credentials.trim()) {
+    throw new Error('Credentials are required for Notion / Jira in this version.');
+  }
   const d = await wpAjax('aicpp_user_connect_data_source', {
     provider: p.provider,
     label: p.label || '',
-    credentials: p.credentials || '',
-    auth_type: p.auth_type || 'credentials',
+    credentials: p.credentials,
   });
   if (!d?.id) throw new Error('Connection was not saved by the server.');
   return { id: d.id, provider: p.provider, label: p.label || p.provider, status: 'connected' };
 }
 
-export async function startDataSourceAuthWP(p: {
-  provider: string;
-  returnUrl?: string;
-}): Promise<{ auth_url: string }> {
-  const d = await wpAjax('aicpp_user_start_data_source_auth', {
-    provider: p.provider,
-    return_url: p.returnUrl || window.location.href,
-  });
-  if (!d?.auth_url) throw new Error('Authentication URL was not returned by the server.');
-  return { auth_url: d.auth_url };
-}
-
-
 export async function disconnectDataSourceWP(id: string | number): Promise<boolean> {
   try {
-    await wpAjax('aicpp_user_disconnect_data_source', {
-      data_source_id: String(id),
-      source_id: String(id),
-    });
+    await wpAjax('aicpp_user_disconnect_data_source', { data_source_id: String(id) });
     return true;
   } catch {
     return false;
   }
 }
+
+// NOTE: startDataSourceAuthWP intentionally REMOVED — the v12.5.1 bridge has
+// no aicpp_user_start_data_source_auth endpoint. Re-adding it will 400.
 
 // ===================== SMART ENGINE RATING =====================
 
