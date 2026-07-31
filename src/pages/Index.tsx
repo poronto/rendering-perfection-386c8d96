@@ -9,6 +9,8 @@ import { SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedMode
 import { ProfileView, ReferView } from '@/components/SidebarViews';
 import { DataSourcesView } from '@/components/DataSourcesView';
 import { ProjectsView } from '@/components/ProjectsView';
+import { ProjectDetailView } from '@/components/ProjectDetailView';
+
 import { MemoryView } from '@/components/MemoryView';
 import { ProjectPicker } from '@/components/ProjectPicker';
 import { AuthModal } from '@/components/AuthModal';
