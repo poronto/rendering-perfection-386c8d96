@@ -5,7 +5,7 @@ import { ChatInput } from '@/components/ChatInput';
 import { ChatMessages } from '@/components/ChatMessages';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { PersonaGallery } from '@/components/PersonaGallery';
-import { SpecializedModesBar, SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
+import { SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
 import { ProfileView, ReferView } from '@/components/SidebarViews';
 import { DataSourcesView } from '@/components/DataSourcesView';
 import { ProjectsView } from '@/components/ProjectsView';
@@ -254,12 +254,7 @@ const Index = () => {
           >
             <Menu className="w-5 h-5 text-muted-foreground" />
           </button>
-          <div className="flex-1 overflow-x-auto">
-            <SpecializedModesBar
-              activeMode={activeMode.id}
-              onSelectMode={setActiveMode}
-            />
-          </div>
+          <div className="flex-1" />
           <ProjectPicker
             projects={projects}
             selectedProjectId={activeProjectId}
