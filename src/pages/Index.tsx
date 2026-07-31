@@ -254,12 +254,7 @@ const Index = () => {
           >
             <Menu className="w-5 h-5 text-muted-foreground" />
           </button>
-          <div className="flex-1 overflow-x-auto">
-            <SpecializedModesBar
-              activeMode={activeMode.id}
-              onSelectMode={setActiveMode}
-            />
-          </div>
+          <div className="flex-1" />
           <ProjectPicker
             projects={projects}
             selectedProjectId={activeProjectId}
