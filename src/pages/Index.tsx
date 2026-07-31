@@ -276,9 +276,21 @@ const Index = () => {
   const avatarUrl = profile?.avatar_url || undefined;
 
   const handleAssignProject = async (projectId: string | null) => {
-    if (!activeConvId) return;
+    if (!activeConvId) {
+      // No conversation yet — remember the project for the next chat (ChatGPT behaviour).
+      setPendingProjectId(projectId);
+      return;
+    }
     await assignConversation(activeConvId, projectId);
   };
+
+  const handleDeleteOpenProject = async () => {
+    if (!openProject) return;
+    if (!confirm(`Delete project "${openProject.name}"? Chats stay but lose this project.`)) return;
+    await deleteProject(openProject.id);
+    setOpenProjectId(null);
+  };
+
 
   return (
     <div className="flex h-dvh bg-background overflow-hidden">
