@@ -41,6 +41,8 @@ export function ProjectsView({ onBackToChat, onOpenProject }: ProjectsViewProps)
         setDescription('');
         setInstructions('');
         setShowForm(false);
+        onOpenProject?.(p.id);
+
       } else {
         toast.error('Failed to create project — server returned no project');
       }
