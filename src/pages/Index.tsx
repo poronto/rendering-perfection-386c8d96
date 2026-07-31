@@ -325,9 +325,9 @@ const Index = () => {
           <ProjectPicker
             projects={projects}
             selectedProjectId={activeProjectId}
-            disabled={!activeConvId}
             onSelect={handleAssignProject}
           />
+
           {user ? (
             <button
               onClick={signOut}
