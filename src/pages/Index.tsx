@@ -221,9 +221,25 @@ const Index = () => {
     }
 
     if (wpMode) {
-      setTimeout(() => fetchConversations(), 500);
+      setTimeout(async () => {
+        await fetchConversations();
+        setAwaitingWpConvForProject(pendingProjectId);
+      }, 500);
     }
   };
+
+  // WordPress mode: the plugin creates the conversation server-side, so we attach
+  // the newest conversation to the project the chat was started from.
+  const [awaitingWpConvForProject, setAwaitingWpConvForProject] = useState<string | null>(null);
+  useEffect(() => {
+    if (!wpMode || !awaitingWpConvForProject || conversations.length === 0) return;
+    const newest = conversations[0];
+    setActiveConvId((prev) => prev ?? newest.id);
+    assignConversation(newest.id, awaitingWpConvForProject);
+    setAwaitingWpConvForProject(null);
+    setPendingProjectId(null);
+  }, [wpMode, awaitingWpConvForProject, conversations, assignConversation]);
+
 
   const handleRegenerate = async (messageIndex: number) => {
     const userMsg = currentMessages.slice(0, messageIndex).reverse().find(m => m.role === 'user');
