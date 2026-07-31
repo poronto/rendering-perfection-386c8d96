@@ -176,8 +176,15 @@ const Index = () => {
     if (!convId && !wpMode) {
       const title = text.slice(0, 40) + (text.length > 40 ? '...' : '');
       convId = await createConversation(title, selectedPersona.id);
-      if (convId) setActiveConvId(convId);
+      if (convId) {
+        setActiveConvId(convId);
+        if (pendingProjectId) {
+          await assignConversation(convId, pendingProjectId);
+          setPendingProjectId(null);
+        }
+      }
     }
+
 
     if (convId && !wpMode) {
       await saveMessage(convId, 'user', text);
