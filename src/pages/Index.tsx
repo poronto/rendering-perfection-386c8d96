@@ -94,6 +94,7 @@ const Index = () => {
   const handleNewConversation = () => {
     setActiveConvId(null);
     setCurrentMessages([]);
+    setPendingProjectId(null);
     setSidebarOpen(false);
   };
 
@@ -101,13 +102,31 @@ const Index = () => {
     const conv = conversations.find(c => c.id === id);
     if (conv) {
       setActiveConvId(id);
+      setPendingProjectId(null);
       const msgs = await loadMessages(id);
       setCurrentMessages(msgs);
       const persona = personas.find(p => p.id === conv.personaId);
       if (persona) setSelectedPersona(persona);
     }
+    setActiveView('chat');
     setSidebarOpen(false);
   };
+
+  const handleOpenProject = async (id: string) => {
+    await refreshProjects();
+    setOpenProjectId(id);
+    setActiveView('projects');
+    setSidebarOpen(false);
+  };
+
+  const handleNewChatInProject = (projectId: string) => {
+    setActiveConvId(null);
+    setCurrentMessages([]);
+    setPendingProjectId(projectId);
+    setActiveView('chat');
+    setSidebarOpen(false);
+  };
+
 
   const handleDeleteConversation = async (id: string) => {
     await deleteConversation(id);
