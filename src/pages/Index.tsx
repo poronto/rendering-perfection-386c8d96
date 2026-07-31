@@ -59,10 +59,23 @@ const Index = () => {
     assignments: projectAssignments,
     assignConversation,
     getProjectForConversation,
+    updateProject,
+    deleteProject,
+    refresh: refreshProjects,
   } = useProjects();
   const memory = useMemory();
-  const activeProjectId = getProjectForConversation(activeConvId);
+  // Project page currently open (ChatGPT-style project workspace)
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+  // Project a brand-new chat should be created inside
+  const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
+  const assignedProjectId = getProjectForConversation(activeConvId);
+  const activeProjectId = activeConvId ? assignedProjectId : pendingProjectId;
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
+  const openProject = projects.find((p) => p.id === openProjectId) || null;
+  const projectConversations = conversations.filter(
+    (c) => (projectAssignments[c.id] || c.projectId) === openProjectId,
+  );
+
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
