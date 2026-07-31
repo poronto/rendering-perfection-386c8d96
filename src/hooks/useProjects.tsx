@@ -117,7 +117,31 @@ export function useProjects() {
     [wpMode],
   );
 
+  const updateProject = useCallback(
+    async (id: string, data: { name?: string; description?: string; customInstructions?: string }) => {
+      const apply = (p: Project): Project => ({
+        ...p,
+        name: data.name !== undefined ? data.name.trim() || p.name : p.name,
+        description: data.description !== undefined ? data.description.trim() || undefined : p.description,
+        customInstructions:
+          data.customInstructions !== undefined
+            ? data.customInstructions.trim() || undefined
+            : p.customInstructions,
+      });
+      if (!wpMode) {
+        const next = readProjects().map((p) => (p.id === id ? apply(p) : p));
+        writeProjects(next);
+        setProjects(next);
+        return true;
+      }
+      setProjects((prev) => prev.map((p) => (p.id === id ? apply(p) : p)));
+      return true;
+    },
+    [wpMode],
+  );
+
   const deleteProject = useCallback(
+
     async (id: string) => {
       if (wpMode) {
         const ok = await deleteProjectFromWP(id);
@@ -166,9 +190,11 @@ export function useProjects() {
     loading,
     refresh,
     createProject,
+    updateProject,
     deleteProject,
     assignConversation,
     getProjectForConversation,
     assignments,
   };
 }
+

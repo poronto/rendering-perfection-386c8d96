@@ -5,10 +5,12 @@ import { useProjects } from '@/hooks/useProjects';
 
 interface ProjectsViewProps {
   onBackToChat: () => void;
+  onOpenProject?: (id: string) => void;
 }
 
-export function ProjectsView({ onBackToChat }: ProjectsViewProps) {
+export function ProjectsView({ onBackToChat, onOpenProject }: ProjectsViewProps) {
   const { projects, createProject, deleteProject, loading } = useProjects();
+
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -39,6 +41,8 @@ export function ProjectsView({ onBackToChat }: ProjectsViewProps) {
         setDescription('');
         setInstructions('');
         setShowForm(false);
+        onOpenProject?.(p.id);
+
       } else {
         toast.error('Failed to create project — server returned no project');
       }
@@ -138,10 +142,13 @@ export function ProjectsView({ onBackToChat }: ProjectsViewProps) {
           {projects.map((p) => (
             <div
               key={p.id}
-              className="flex items-start gap-3 px-4 py-3 rounded-xl bg-card border border-border"
+              className="flex items-start gap-3 px-4 py-3 rounded-xl bg-card border border-border hover:bg-muted/40 transition-colors"
             >
               <FolderKanban className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
+              <button
+                onClick={() => onOpenProject?.(p.id)}
+                className="flex-1 min-w-0 text-left"
+              >
                 <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
                 {p.description && (
                   <p className="text-xs text-muted-foreground line-clamp-2">{p.description}</p>
@@ -151,7 +158,7 @@ export function ProjectsView({ onBackToChat }: ProjectsViewProps) {
                     Custom: {p.customInstructions}
                   </p>
                 )}
-              </div>
+              </button>
               <button
                 onClick={() => handleDelete(p.id, p.name)}
                 className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
@@ -161,6 +168,7 @@ export function ProjectsView({ onBackToChat }: ProjectsViewProps) {
               </button>
             </div>
           ))}
+
         </div>
       </div>
     </div>

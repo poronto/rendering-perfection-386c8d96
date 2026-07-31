@@ -9,6 +9,8 @@ import { SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedMode
 import { ProfileView, ReferView } from '@/components/SidebarViews';
 import { DataSourcesView } from '@/components/DataSourcesView';
 import { ProjectsView } from '@/components/ProjectsView';
+import { ProjectDetailView } from '@/components/ProjectDetailView';
+
 import { MemoryView } from '@/components/MemoryView';
 import { ProjectPicker } from '@/components/ProjectPicker';
 import { AuthModal } from '@/components/AuthModal';
@@ -59,10 +61,23 @@ const Index = () => {
     assignments: projectAssignments,
     assignConversation,
     getProjectForConversation,
+    updateProject,
+    deleteProject,
+    refresh: refreshProjects,
   } = useProjects();
   const memory = useMemory();
-  const activeProjectId = getProjectForConversation(activeConvId);
+  // Project page currently open (ChatGPT-style project workspace)
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+  // Project a brand-new chat should be created inside
+  const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
+  const assignedProjectId = getProjectForConversation(activeConvId);
+  const activeProjectId = activeConvId ? assignedProjectId : pendingProjectId;
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
+  const openProject = projects.find((p) => p.id === openProjectId) || null;
+  const projectConversations = conversations.filter(
+    (c) => (projectAssignments[c.id] || c.projectId) === openProjectId,
+  );
+
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -81,6 +96,7 @@ const Index = () => {
   const handleNewConversation = () => {
     setActiveConvId(null);
     setCurrentMessages([]);
+    setPendingProjectId(null);
     setSidebarOpen(false);
   };
 
@@ -88,13 +104,31 @@ const Index = () => {
     const conv = conversations.find(c => c.id === id);
     if (conv) {
       setActiveConvId(id);
+      setPendingProjectId(null);
       const msgs = await loadMessages(id);
       setCurrentMessages(msgs);
       const persona = personas.find(p => p.id === conv.personaId);
       if (persona) setSelectedPersona(persona);
     }
+    setActiveView('chat');
     setSidebarOpen(false);
   };
+
+  const handleOpenProject = async (id: string) => {
+    await refreshProjects();
+    setOpenProjectId(id);
+    setActiveView('projects');
+    setSidebarOpen(false);
+  };
+
+  const handleNewChatInProject = (projectId: string) => {
+    setActiveConvId(null);
+    setCurrentMessages([]);
+    setPendingProjectId(projectId);
+    setActiveView('chat');
+    setSidebarOpen(false);
+  };
+
 
   const handleDeleteConversation = async (id: string) => {
     await deleteConversation(id);
@@ -144,8 +178,15 @@ const Index = () => {
     if (!convId && !wpMode) {
       const title = text.slice(0, 40) + (text.length > 40 ? '...' : '');
       convId = await createConversation(title, selectedPersona.id);
-      if (convId) setActiveConvId(convId);
+      if (convId) {
+        setActiveConvId(convId);
+        if (pendingProjectId) {
+          await assignConversation(convId, pendingProjectId);
+          setPendingProjectId(null);
+        }
+      }
     }
+
 
     if (convId && !wpMode) {
       await saveMessage(convId, 'user', text);
@@ -182,9 +223,25 @@ const Index = () => {
     }
 
     if (wpMode) {
-      setTimeout(() => fetchConversations(), 500);
+      setTimeout(async () => {
+        await fetchConversations();
+        setAwaitingWpConvForProject(pendingProjectId);
+      }, 500);
     }
   };
+
+  // WordPress mode: the plugin creates the conversation server-side, so we attach
+  // the newest conversation to the project the chat was started from.
+  const [awaitingWpConvForProject, setAwaitingWpConvForProject] = useState<string | null>(null);
+  useEffect(() => {
+    if (!wpMode || !awaitingWpConvForProject || conversations.length === 0) return;
+    const newest = conversations[0];
+    setActiveConvId((prev) => prev ?? newest.id);
+    assignConversation(newest.id, awaitingWpConvForProject);
+    setAwaitingWpConvForProject(null);
+    setPendingProjectId(null);
+  }, [wpMode, awaitingWpConvForProject, conversations, assignConversation]);
+
 
   const handleRegenerate = async (messageIndex: number) => {
     const userMsg = currentMessages.slice(0, messageIndex).reverse().find(m => m.role === 'user');
@@ -221,9 +278,21 @@ const Index = () => {
   const avatarUrl = profile?.avatar_url || undefined;
 
   const handleAssignProject = async (projectId: string | null) => {
-    if (!activeConvId) return;
+    if (!activeConvId) {
+      // No conversation yet — remember the project for the next chat (ChatGPT behaviour).
+      setPendingProjectId(projectId);
+      return;
+    }
     await assignConversation(activeConvId, projectId);
   };
+
+  const handleDeleteOpenProject = async () => {
+    if (!openProject) return;
+    if (!confirm(`Delete project "${openProject.name}"? Chats stay but lose this project.`)) return;
+    await deleteProject(openProject.id);
+    setOpenProjectId(null);
+  };
+
 
   return (
     <div className="flex h-dvh bg-background overflow-hidden">
@@ -258,9 +327,9 @@ const Index = () => {
           <ProjectPicker
             projects={projects}
             selectedProjectId={activeProjectId}
-            disabled={!activeConvId}
             onSelect={handleAssignProject}
           />
+
           {user ? (
             <button
               onClick={signOut}
@@ -301,7 +370,25 @@ const Index = () => {
             onBack={() => setActiveView('chat')}
           />
         ) : activeView === 'projects' ? (
-          <ProjectsView onBackToChat={() => setActiveView('chat')} />
+          openProject ? (
+            <ProjectDetailView
+              project={openProject}
+              conversations={projectConversations}
+              activeConversationId={activeConvId}
+              onBack={() => setOpenProjectId(null)}
+              onNewChatInProject={() => handleNewChatInProject(openProject.id)}
+              onSelectConversation={handleSelectConversation}
+              onRemoveFromProject={(cid) => assignConversation(cid, null)}
+              onUpdateProject={(data) => updateProject(openProject.id, data)}
+              onDeleteProject={handleDeleteOpenProject}
+            />
+          ) : (
+            <ProjectsView
+              onBackToChat={() => setActiveView('chat')}
+              onOpenProject={handleOpenProject}
+            />
+          )
+
         ) : activeView === 'memory' ? (
           <MemoryView onBackToChat={() => setActiveView('chat')} />
         ) : (
