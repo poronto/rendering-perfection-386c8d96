@@ -5,10 +5,12 @@ import { useProjects } from '@/hooks/useProjects';
 
 interface ProjectsViewProps {
   onBackToChat: () => void;
+  onOpenProject?: (id: string) => void;
 }
 
-export function ProjectsView({ onBackToChat }: ProjectsViewProps) {
+export function ProjectsView({ onBackToChat, onOpenProject }: ProjectsViewProps) {
   const { projects, createProject, deleteProject, loading } = useProjects();
+
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
