@@ -190,9 +190,11 @@ export function useProjects() {
     loading,
     refresh,
     createProject,
+    updateProject,
     deleteProject,
     assignConversation,
     getProjectForConversation,
     assignments,
   };
 }
+
