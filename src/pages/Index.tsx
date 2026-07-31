@@ -368,7 +368,25 @@ const Index = () => {
             onBack={() => setActiveView('chat')}
           />
         ) : activeView === 'projects' ? (
-          <ProjectsView onBackToChat={() => setActiveView('chat')} />
+          openProject ? (
+            <ProjectDetailView
+              project={openProject}
+              conversations={projectConversations}
+              activeConversationId={activeConvId}
+              onBack={() => setOpenProjectId(null)}
+              onNewChatInProject={() => handleNewChatInProject(openProject.id)}
+              onSelectConversation={handleSelectConversation}
+              onRemoveFromProject={(cid) => assignConversation(cid, null)}
+              onUpdateProject={(data) => updateProject(openProject.id, data)}
+              onDeleteProject={handleDeleteOpenProject}
+            />
+          ) : (
+            <ProjectsView
+              onBackToChat={() => setActiveView('chat')}
+              onOpenProject={handleOpenProject}
+            />
+          )
+
         ) : activeView === 'memory' ? (
           <MemoryView onBackToChat={() => setActiveView('chat')} />
         ) : (
