@@ -5,7 +5,7 @@ import { ChatInput } from '@/components/ChatInput';
 import { ChatMessages } from '@/components/ChatMessages';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { PersonaGallery } from '@/components/PersonaGallery';
-import { SpecializedModesBar, SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
+import { SpecializedMode, SPECIALIZED_MODES } from '@/components/SpecializedModes';
 import { ProfileView, ReferView } from '@/components/SidebarViews';
 import { DataSourcesView } from '@/components/DataSourcesView';
 import { ProjectsView } from '@/components/ProjectsView';
