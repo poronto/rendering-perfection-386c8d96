@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Copy, Check, RefreshCw, ExternalLink, FileBox, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { Message } from '@/lib/types';
+import { Copy, Check, RefreshCw, ExternalLink, FileBox, ThumbsUp, ThumbsDown, Cpu } from 'lucide-react';
+import { Message, EngineMeta } from '@/lib/types';
 import { MarkdownMessage } from './MarkdownMessage';
 import { StreamingMessage } from './StreamingMessage';
 import { ResultArtifactPanel, parseArtifacts, type Artifact } from './ResultArtifactPanel';
-import { rateEngineResponse } from '@/lib/wp-api';
+import { rateEngineResponse, isWordPress } from '@/lib/wp-api';
 import { toast } from 'sonner';
+
 
 interface ChatMessagesProps {
   messages: Message[];
