@@ -393,7 +393,7 @@ const Index = () => {
             onSelect={handleAssignProject}
           />
 
-          {wpMode && caps.artifacts && (
+          {wpMode && caps.canArtifacts && (
             <button
               onClick={() => {
                 if (!activeConvId) {
@@ -403,7 +403,7 @@ const Index = () => {
                 setArtifactsOpen(true);
               }}
               className="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
-              title={`Artifacts${bridge?.version ? ` · bridge ${bridge.version}` : ''}`}
+              title={`Artifacts${bridge?.bridgeVersion ? ` · bridge ${bridge.bridgeVersion}` : ''}`}
             >
               <FileBox className="w-4 h-4 text-muted-foreground" />
             </button>
