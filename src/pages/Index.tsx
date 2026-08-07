@@ -509,6 +509,15 @@ const Index = () => {
           onClose={user ? () => setShowAuth(false) : undefined}
         />
       )}
+
+      <ArtifactsPanel
+        conversationId={activeConvId}
+        open={artifactsOpen}
+        onClose={() => { setArtifactsOpen(false); setPendingArtifactId(null); }}
+        refreshKey={artifactsRefresh}
+        openArtifactId={pendingArtifactId}
+      />
+
     </div>
   );
 };
