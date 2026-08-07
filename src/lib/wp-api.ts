@@ -625,22 +625,149 @@ export async function disconnectDataSourceWP(id: string | number): Promise<boole
 // NOTE: startDataSourceAuthWP intentionally REMOVED — the v12.5.1 bridge has
 // no aicpp_user_start_data_source_auth endpoint. Re-adding it will 400.
 
-// ===================== SMART ENGINE RATING =====================
+// ===================== SMART ENGINE (rating) =====================
+// v12.6 contract: aicpp_engine_rate expects model_id + category + rating (1..5).
 
 export async function rateEngineResponse(
-  rating: number,
-  context?: { conversation_id?: string | number; message_id?: string | number; model?: string },
+  liked: boolean,
+  context?: { model?: string; category?: string },
 ): Promise<boolean> {
   if (!isWordPress()) return false;
+  if (!context?.model) return false; // server rejects ratings without a known model
   try {
-    const params: Record<string, string> = { rating: String(rating) };
-    if (context?.conversation_id != null) params.conversation_id = String(context.conversation_id);
-    if (context?.message_id != null) params.message_id = String(context.message_id);
-    if (context?.model) params.model = context.model;
-    await wpAjax('aicpp_engine_rate', params);
+    const ep = resolveEndpoint('engine', 'rate', 'aicpp_engine_rate');
+    await wpAjax(
+      ep.action,
+      {
+        model_id: context.model,
+        category: context.category || 'general',
+        rating: liked ? '5' : '1',
+      },
+      ep.nonce,
+    );
     return true;
   } catch (e) {
     console.error('rateEngineResponse failed:', e);
     return false;
   }
 }
+
+// ===================== ARTIFACTS =====================
+
+export interface WPArtifact {
+  id: number;
+  title: string;
+  artifact_type: string;
+  version?: number;
+  updated_at?: string;
+  content?: string;
+  conversation_id?: number;
+}
+
+export async function listArtifactsWP(conversationId: string | number): Promise<WPArtifact[]> {
+  if (!isWordPress() || !conversationId) return [];
+  try {
+    const ep = resolveEndpoint('artifacts', 'list', 'aicpp_list_artifacts');
+    const d = await wpAjax(ep.action, { conversation_id: String(conversationId) }, ep.nonce);
+    return Array.isArray(d?.artifacts) ? d.artifacts : [];
+  } catch (e) {
+    console.error('listArtifactsWP failed:', e);
+    return [];
+  }
+}
+
+export async function getArtifactWP(id: string | number): Promise<WPArtifact | null> {
+  try {
+    const ep = resolveEndpoint('artifacts', 'get', 'aicpp_get_artifact');
+    const d = await wpAjax(ep.action, { artifact_id: String(id) }, ep.nonce);
+    return d ? (d as WPArtifact) : null;
+  } catch (e) {
+    console.error('getArtifactWP failed:', e);
+    return null;
+  }
+}
+
+export async function saveArtifactWP(a: {
+  id?: string | number;
+  conversationId?: string | number | null;
+  title: string;
+  type: string;
+  content: string;
+}): Promise<number | null> {
+  try {
+    const ep = resolveEndpoint('artifacts', 'save', 'aicpp_save_artifact');
+    const d = await wpAjax(
+      ep.action,
+      {
+        artifact_id: a.id ? String(a.id) : '0',
+        conversation_id: a.conversationId ? String(a.conversationId) : '0',
+        title: a.title,
+        artifact_type: a.type,
+        content: a.content,
+      },
+      ep.nonce,
+    );
+    return d?.id ? Number(d.id) : null;
+  } catch (e) {
+    console.error('saveArtifactWP failed:', e);
+    return null;
+  }
+}
+
+export async function deleteArtifactWP(id: string | number): Promise<boolean> {
+  try {
+    const ep = resolveEndpoint('artifacts', 'delete', 'aicpp_delete_artifact');
+    await wpAjax(ep.action, { artifact_id: String(id) }, ep.nonce);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ===================== REWARDS (referrals + leaderboard) =====================
+
+export interface WPReferralData {
+  referral_code: string;
+  referral_link: string;
+  referred_count: number;
+  points: number;
+}
+
+export interface WPLeaderboardEntry {
+  rank: number;
+  user_id: number;
+  username: string;
+  points: number;
+  badge: string;
+  avatar?: string;
+}
+
+export async function getReferralDataWP(): Promise<WPReferralData | null> {
+  if (!isWordPress() || !isWPUserLoggedIn()) return null;
+  try {
+    const ep = resolveEndpoint('rewards', 'referrals', 'aicpp_get_referral_data');
+    const d = await wpAjax(ep.action, {}, ep.nonce);
+    return {
+      referral_code: d?.referral_code || '',
+      referral_link: d?.referral_link || '',
+      referred_count: Number(d?.referred_count || 0),
+      points: Number(d?.points || 0),
+    };
+  } catch (e) {
+    console.error('getReferralDataWP failed:', e);
+    return null;
+  }
+}
+
+export async function getLeaderboardWP(): Promise<WPLeaderboardEntry[]> {
+  if (!isWordPress()) return [];
+  try {
+    const ep = resolveEndpoint('rewards', 'leaderboard', 'aicpp_get_leaderboard');
+    const d = await wpAjax(ep.action, {}, ep.nonce);
+    return Array.isArray(d?.leaderboard) ? d.leaderboard : [];
+  } catch (e) {
+    console.error('getLeaderboardWP failed:', e);
+    return [];
+  }
+}
+
