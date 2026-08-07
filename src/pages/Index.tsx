@@ -393,6 +393,24 @@ const Index = () => {
             onSelect={handleAssignProject}
           />
 
+          {wpMode && caps.artifacts && (
+            <button
+              onClick={() => {
+                if (!activeConvId) {
+                  toast.info('Start a chat first — artifacts are saved per conversation.');
+                  return;
+                }
+                setArtifactsOpen(true);
+              }}
+              className="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
+              title={`Artifacts${bridge?.version ? ` · bridge ${bridge.version}` : ''}`}
+            >
+              <FileBox className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+
+
+
           {user ? (
             <button
               onClick={signOut}
