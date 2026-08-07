@@ -1,9 +1,16 @@
-import { useState, useRef } from 'react';
-import { Gift, ArrowLeft, Save, X, Camera, Copy, Check, Share2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Gift, ArrowLeft, Save, X, Camera, Copy, Check, Share2, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { useWPConversations } from '@/hooks/useWPConversations';
-import { isWordPress } from '@/lib/wp-api';
+import {
+  isWordPress,
+  getReferralDataWP,
+  getLeaderboardWP,
+  type WPReferralData,
+  type WPLeaderboardEntry,
+} from '@/lib/wp-api';
+
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
