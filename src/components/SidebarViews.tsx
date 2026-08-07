@@ -219,9 +219,19 @@ function ProfileField({ label, value }: { label: string; value: string }) {
 export function ReferView({ onBackToChat }: ViewProps) {
   const { user, conversations } = useViewData();
   const [copied, setCopied] = useState(false);
+  const [referral, setReferral] = useState<WPReferralData | null>(null);
+  const [leaderboard, setLeaderboard] = useState<WPLeaderboardEntry[]>([]);
 
-  const referralCode = 'VERSACE-' + (user?.id?.substring(0, 6).toUpperCase() || 'GUEST');
-  const referralLink = `${window.location.origin}?ref=${referralCode}`;
+  useEffect(() => {
+    if (!isWordPress()) return;
+    getReferralDataWP().then(setReferral).catch(() => {});
+    getLeaderboardWP().then(setLeaderboard).catch(() => {});
+  }, []);
+
+  const referralCode =
+    referral?.referral_code || 'VERSACE-' + (user?.id?.substring(0, 6).toUpperCase() || 'GUEST');
+  const referralLink = referral?.referral_link || `${window.location.origin}?ref=${referralCode}`;
+
 
   const handleCopy = (text: string) => {
     navigator.clipboard?.writeText(text);
