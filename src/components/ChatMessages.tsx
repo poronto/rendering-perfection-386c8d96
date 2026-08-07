@@ -192,10 +192,8 @@ export function ChatMessages({ messages, isTyping, streamingMessageId, onRegener
               </div>
 
               {isAssistant && !isStreaming && (
-                <div className="flex items-center gap-1 mt-1 ml-1 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity"
-                     onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                     onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
-                >
+                <div className="flex flex-wrap items-center gap-1 mt-1 ml-1">
+                  {msg.engine && <EngineBadge engine={msg.engine} />}
                   <CopyButton text={stripped || msg.content} />
                   {onRegenerate && (
                     <button
@@ -206,9 +204,10 @@ export function ChatMessages({ messages, isTyping, streamingMessageId, onRegener
                       <RefreshCw className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  <RatingButtons messageId={String(msg.id)} />
+                  <RatingButtons engine={msg.engine} />
                 </div>
               )}
+
             </div>
           </div>
         );
