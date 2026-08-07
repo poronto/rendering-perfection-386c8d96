@@ -5,6 +5,16 @@ export interface Persona {
   model: string;
   avatar: string;
   isDefault?: boolean;
+  visibility?: 'public' | 'private';
+}
+
+/** Smart Model Engine metadata returned by the plugin with each reply. */
+export interface EngineMeta {
+  mode?: string;      // router | council | hybrid
+  category?: string;
+  model?: string;
+  members?: string[];
+  judge?: string;
 }
 
 export interface Message {
@@ -13,6 +23,8 @@ export interface Message {
   content: string;
   timestamp: Date;
   persona?: Persona;
+  engine?: EngineMeta | null;
+  artifactIds?: number[];
 }
 
 export interface Conversation {
@@ -23,6 +35,7 @@ export interface Conversation {
   updatedAt: Date;
   projectId?: string | null;
 }
+
 
 export interface Project {
   id: string;
