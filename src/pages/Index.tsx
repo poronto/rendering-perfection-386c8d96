@@ -69,14 +69,27 @@ const Index = () => {
   const [activeView, setActiveView] = useState<SidebarView>('chat');
   const [standalonePersonas] = useState<Persona[]>(DEFAULT_PERSONAS);
   const { personas: wpPersonas } = useWPPersonas(wpMode);
-  const personas = wpMode ? wpPersonas : standalonePersonas;
+  const caps = useMemo(() => getWPCapabilities(), []);
+  const bridge = useMemo(() => getBridgeInfo(), []);
+  const mainCharacterAvailable = wpMode && hasMainCharacterEndpoint();
+  const personas = useMemo(
+    () =>
+      wpMode
+        ? (mainCharacterAvailable ? [MAIN_CHARACTER, ...wpPersonas] : wpPersonas)
+        : standalonePersonas,
+    [wpMode, mainCharacterAvailable, wpPersonas, standalonePersonas],
+  );
   const [selectedPersona, setSelectedPersona] = useState<Persona>(DEFAULT_PERSONAS[0]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<SpecializedMode>(SPECIALIZED_MODES[0]);
+  const [artifactsOpen, setArtifactsOpen] = useState(false);
+  const [artifactsRefresh, setArtifactsRefresh] = useState(0);
+  const [pendingArtifactId, setPendingArtifactId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
 
   const {
     projects,
