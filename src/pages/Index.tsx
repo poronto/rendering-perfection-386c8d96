@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Menu, LogOut } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Menu, LogOut, FileBox } from 'lucide-react';
+import { toast } from 'sonner';
 import { ChatSidebar, SidebarView } from '@/components/ChatSidebar';
 import { ChatInput } from '@/components/ChatInput';
 import { ChatMessages } from '@/components/ChatMessages';
@@ -10,13 +11,22 @@ import { ProfileView, ReferView } from '@/components/SidebarViews';
 import { DataSourcesView } from '@/components/DataSourcesView';
 import { ProjectsView } from '@/components/ProjectsView';
 import { ProjectDetailView } from '@/components/ProjectDetailView';
+import { ArtifactsPanel } from '@/components/ArtifactsPanel';
 
 import { MemoryView } from '@/components/MemoryView';
 import { ProjectPicker } from '@/components/ProjectPicker';
 import { AuthModal } from '@/components/AuthModal';
 import { WPAuthModal } from '@/components/WPAuthModal';
 import { DEFAULT_PERSONAS, Message, Persona } from '@/lib/types';
-import { sendMessageToWP, isWordPress } from '@/lib/wp-api';
+import {
+  sendMessageToWP,
+  sendMessageToMainWP,
+  hasMainCharacterEndpoint,
+  getWPCapabilities,
+  getBridgeInfo,
+  isWordPress,
+  type WPChatResponse,
+} from '@/lib/wp-api';
 import { useAuth } from '@/hooks/useAuth';
 import { useWPAuth } from '@/hooks/useWPAuth';
 import { useConversations } from '@/hooks/useConversations';
@@ -24,6 +34,18 @@ import { useWPConversations } from '@/hooks/useWPConversations';
 import { useWPPersonas } from '@/hooks/useWPPersonas';
 import { useProjects } from '@/hooks/useProjects';
 import { useMemory } from '@/hooks/useMemory';
+
+/** Pseudo-persona representing the WordPress "Main Site Character". */
+const MAIN_CHARACTER: Persona = {
+  id: 'main',
+  name: 'Main Character',
+  description: 'The default site-wide AI assistant',
+  model: 'auto',
+  avatar: 'MC',
+  isDefault: true,
+  visibility: 'public',
+};
+
 
 const Index = () => {
   const wpMode = isWordPress();
