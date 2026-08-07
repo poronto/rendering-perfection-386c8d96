@@ -166,6 +166,21 @@ const Index = () => {
     handleNewConversation();
   };
 
+  /** Route to the Main Character endpoint or the persona endpoint. */
+  const dispatchChat = useCallback(
+    async (
+      text: string,
+      attachment?: { url: string; type: string; data?: string } | null,
+      convId?: string | null,
+    ): Promise<WPChatResponse> => {
+      if (wpMode && selectedPersona.id === MAIN_CHARACTER.id) {
+        return sendMessageToMainWP(text, attachment, convId ?? null);
+      }
+      return sendMessageToWP(text, attachment, wpMode ? selectedPersona.id : undefined, convId ?? null);
+    },
+    [wpMode, selectedPersona.id],
+  );
+
   const handleSend = async (
     text: string,
     attachment?: { url: string; type: string; data?: string } | null,
@@ -175,8 +190,10 @@ const Index = () => {
       return;
     }
 
-    // Build prepended context: memory preamble + project instructions + mode prefix
-    const memoryPreamble = memory.buildPreamble();
+    // In WordPress mode the plugin injects memories server-side ("## WHAT YOU
+    // REMEMBER ABOUT THE USER"), so the client preamble is skipped to avoid
+    // duplicated/conflicting memory context.
+    const memoryPreamble = wpMode ? '' : memory.buildPreamble();
     const projectInstructions = activeProject?.customInstructions
       ? `Project context "${activeProject.name}":\n${activeProject.customInstructions}`
       : '';
@@ -209,19 +226,35 @@ const Index = () => {
       }
     }
 
-
     if (convId && !wpMode) {
       await saveMessage(convId, 'user', text);
     }
 
     setIsTyping(true);
 
-    let replyContent: string;
+    let reply: WPChatResponse;
     try {
-      replyContent = await sendMessageToWP(fullText, attachment, wpMode ? selectedPersona.id : undefined);
+      reply = await dispatchChat(fullText, attachment, convId);
     } catch (error) {
       console.error('Chat API error:', error);
-      replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please check your API settings in WordPress admin.`;
+      reply = {
+        message: `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}.`,
+        engine: null,
+      };
+    }
+
+    const replyContent = reply.message || '';
+
+    // WordPress creates/returns the conversation id with every reply — use it
+    // immediately instead of guessing from the refreshed list.
+    if (wpMode && reply.conversation_id) {
+      const wpConvId = String(reply.conversation_id);
+      if (activeConvId !== wpConvId) setActiveConvId(wpConvId);
+      convId = wpConvId;
+      if (pendingProjectId) {
+        await assignConversation(wpConvId, pendingProjectId);
+        setPendingProjectId(null);
+      }
     }
 
     const aiMsgId = crypto.randomUUID();
@@ -231,10 +264,11 @@ const Index = () => {
       content: replyContent,
       timestamp: new Date(),
       persona: selectedPersona,
+      engine: reply.engine || null,
+      artifactIds: reply.new_artifacts || [],
     };
 
-    const updatedMessages = [...newMessages, aiMsg];
-    setCurrentMessages(updatedMessages);
+    setCurrentMessages([...newMessages, aiMsg]);
     setIsTyping(false);
 
     setStreamingMessageId(aiMsgId);
@@ -245,25 +279,13 @@ const Index = () => {
     }
 
     if (wpMode) {
-      setTimeout(async () => {
-        await fetchConversations();
-        setAwaitingWpConvForProject(pendingProjectId);
-      }, 500);
+      if (reply.new_artifacts && reply.new_artifacts.length > 0) {
+        setArtifactsRefresh((n) => n + 1);
+        setPendingArtifactId(reply.open_artifact || reply.new_artifacts[reply.new_artifacts.length - 1]);
+      }
+      fetchConversations();
     }
   };
-
-  // WordPress mode: the plugin creates the conversation server-side, so we attach
-  // the newest conversation to the project the chat was started from.
-  const [awaitingWpConvForProject, setAwaitingWpConvForProject] = useState<string | null>(null);
-  useEffect(() => {
-    if (!wpMode || !awaitingWpConvForProject || conversations.length === 0) return;
-    const newest = conversations[0];
-    setActiveConvId((prev) => prev ?? newest.id);
-    assignConversation(newest.id, awaitingWpConvForProject);
-    setAwaitingWpConvForProject(null);
-    setPendingProjectId(null);
-  }, [wpMode, awaitingWpConvForProject, conversations, assignConversation]);
-
 
   const handleRegenerate = async (messageIndex: number) => {
     const userMsg = currentMessages.slice(0, messageIndex).reverse().find(m => m.role === 'user');
@@ -273,27 +295,33 @@ const Index = () => {
     setCurrentMessages(updated);
 
     setIsTyping(true);
-    let replyContent: string;
+    let reply: WPChatResponse;
     try {
-      replyContent = await sendMessageToWP(userMsg.content, null, wpMode ? selectedPersona.id : undefined);
+      reply = await dispatchChat(userMsg.content, null, activeConvId);
     } catch (error) {
-      replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to regenerate'}`;
+      reply = {
+        message: `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to regenerate'}`,
+        engine: null,
+      };
     }
 
     const aiMsgId = crypto.randomUUID();
     const aiMsg: Message = {
       id: aiMsgId,
       role: 'assistant',
-      content: replyContent,
+      content: reply.message || '',
       timestamp: new Date(),
       persona: selectedPersona,
+      engine: reply.engine || null,
+      artifactIds: reply.new_artifacts || [],
     };
 
     setCurrentMessages([...updated, aiMsg]);
     setIsTyping(false);
     setStreamingMessageId(aiMsgId);
-    setTimeout(() => setStreamingMessageId(null), Math.max(replyContent.length * 15, 3000));
+    setTimeout(() => setStreamingMessageId(null), Math.max((reply.message || '').length * 15, 3000));
   };
+
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
   const initials = displayName.charAt(0).toUpperCase();
