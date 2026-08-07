@@ -293,10 +293,30 @@ export function ReferView({ onBackToChat }: ViewProps) {
         </div>
 
         <div className="grid grid-cols-3 gap-3 text-center">
-          <RewardStat label="Referred" value="0" />
-          <RewardStat label="Earned" value={`${conversations.length * 10} pts`} />
+          <RewardStat label="Referred" value={String(referral?.referred_count ?? 0)} />
+          <RewardStat
+            label="Earned"
+            value={`${referral ? referral.points : conversations.length * 10} pts`}
+          />
           <RewardStat label="Reward" value="50 pts" subtitle="per invite" />
         </div>
+
+        {leaderboard.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5 text-primary" /> Leaderboard
+            </p>
+            {leaderboard.slice(0, 10).map((row) => (
+              <div key={`${row.rank}-${row.user_id}`} className="flex items-center gap-2 text-sm">
+                <span className="w-5 text-muted-foreground">{row.rank}</span>
+                <span className="flex-1 truncate text-foreground">{row.username}</span>
+                {row.badge && <span className="text-[10px] text-muted-foreground">{row.badge}</span>}
+                <span className="font-semibold text-primary">{row.points}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
 
         <div className="space-y-2">
           <button
