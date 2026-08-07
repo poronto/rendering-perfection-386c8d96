@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Menu, LogOut } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Menu, LogOut, FileBox } from 'lucide-react';
+import { toast } from 'sonner';
 import { ChatSidebar, SidebarView } from '@/components/ChatSidebar';
 import { ChatInput } from '@/components/ChatInput';
 import { ChatMessages } from '@/components/ChatMessages';
@@ -10,13 +11,22 @@ import { ProfileView, ReferView } from '@/components/SidebarViews';
 import { DataSourcesView } from '@/components/DataSourcesView';
 import { ProjectsView } from '@/components/ProjectsView';
 import { ProjectDetailView } from '@/components/ProjectDetailView';
+import { ArtifactsPanel } from '@/components/ArtifactsPanel';
 
 import { MemoryView } from '@/components/MemoryView';
 import { ProjectPicker } from '@/components/ProjectPicker';
 import { AuthModal } from '@/components/AuthModal';
 import { WPAuthModal } from '@/components/WPAuthModal';
 import { DEFAULT_PERSONAS, Message, Persona } from '@/lib/types';
-import { sendMessageToWP, isWordPress } from '@/lib/wp-api';
+import {
+  sendMessageToWP,
+  sendMessageToMainWP,
+  hasMainCharacterEndpoint,
+  getWPCapabilities,
+  getBridgeInfo,
+  isWordPress,
+  type WPChatResponse,
+} from '@/lib/wp-api';
 import { useAuth } from '@/hooks/useAuth';
 import { useWPAuth } from '@/hooks/useWPAuth';
 import { useConversations } from '@/hooks/useConversations';
@@ -24,6 +34,18 @@ import { useWPConversations } from '@/hooks/useWPConversations';
 import { useWPPersonas } from '@/hooks/useWPPersonas';
 import { useProjects } from '@/hooks/useProjects';
 import { useMemory } from '@/hooks/useMemory';
+
+/** Pseudo-persona representing the WordPress "Main Site Character". */
+const MAIN_CHARACTER: Persona = {
+  id: 'main',
+  name: 'Main Character',
+  description: 'The default site-wide AI assistant',
+  model: 'auto',
+  avatar: 'MC',
+  isDefault: true,
+  visibility: 'public',
+};
+
 
 const Index = () => {
   const wpMode = isWordPress();
@@ -47,14 +69,27 @@ const Index = () => {
   const [activeView, setActiveView] = useState<SidebarView>('chat');
   const [standalonePersonas] = useState<Persona[]>(DEFAULT_PERSONAS);
   const { personas: wpPersonas } = useWPPersonas(wpMode);
-  const personas = wpMode ? wpPersonas : standalonePersonas;
+  const caps = useMemo(() => getWPCapabilities(), []);
+  const bridge = useMemo(() => getBridgeInfo(), []);
+  const mainCharacterAvailable = wpMode && hasMainCharacterEndpoint();
+  const personas = useMemo(
+    () =>
+      wpMode
+        ? (mainCharacterAvailable ? [MAIN_CHARACTER, ...wpPersonas] : wpPersonas)
+        : standalonePersonas,
+    [wpMode, mainCharacterAvailable, wpPersonas, standalonePersonas],
+  );
   const [selectedPersona, setSelectedPersona] = useState<Persona>(DEFAULT_PERSONAS[0]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<SpecializedMode>(SPECIALIZED_MODES[0]);
+  const [artifactsOpen, setArtifactsOpen] = useState(false);
+  const [artifactsRefresh, setArtifactsRefresh] = useState(0);
+  const [pendingArtifactId, setPendingArtifactId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
 
   const {
     projects,
@@ -144,6 +179,21 @@ const Index = () => {
     handleNewConversation();
   };
 
+  /** Route to the Main Character endpoint or the persona endpoint. */
+  const dispatchChat = useCallback(
+    async (
+      text: string,
+      attachment?: { url: string; type: string; data?: string } | null,
+      convId?: string | null,
+    ): Promise<WPChatResponse> => {
+      if (wpMode && selectedPersona.id === MAIN_CHARACTER.id) {
+        return sendMessageToMainWP(text, attachment, convId ?? null);
+      }
+      return sendMessageToWP(text, attachment, wpMode ? selectedPersona.id : undefined, convId ?? null);
+    },
+    [wpMode, selectedPersona.id],
+  );
+
   const handleSend = async (
     text: string,
     attachment?: { url: string; type: string; data?: string } | null,
@@ -153,8 +203,10 @@ const Index = () => {
       return;
     }
 
-    // Build prepended context: memory preamble + project instructions + mode prefix
-    const memoryPreamble = memory.buildPreamble();
+    // In WordPress mode the plugin injects memories server-side ("## WHAT YOU
+    // REMEMBER ABOUT THE USER"), so the client preamble is skipped to avoid
+    // duplicated/conflicting memory context.
+    const memoryPreamble = wpMode ? '' : memory.buildPreamble();
     const projectInstructions = activeProject?.customInstructions
       ? `Project context "${activeProject.name}":\n${activeProject.customInstructions}`
       : '';
@@ -187,19 +239,35 @@ const Index = () => {
       }
     }
 
-
     if (convId && !wpMode) {
       await saveMessage(convId, 'user', text);
     }
 
     setIsTyping(true);
 
-    let replyContent: string;
+    let reply: WPChatResponse;
     try {
-      replyContent = await sendMessageToWP(fullText, attachment, wpMode ? selectedPersona.id : undefined);
+      reply = await dispatchChat(fullText, attachment, convId);
     } catch (error) {
       console.error('Chat API error:', error);
-      replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please check your API settings in WordPress admin.`;
+      reply = {
+        message: `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to get response'}.`,
+        engine: null,
+      };
+    }
+
+    const replyContent = reply.message || '';
+
+    // WordPress creates/returns the conversation id with every reply — use it
+    // immediately instead of guessing from the refreshed list.
+    if (wpMode && reply.conversation_id) {
+      const wpConvId = String(reply.conversation_id);
+      if (activeConvId !== wpConvId) setActiveConvId(wpConvId);
+      convId = wpConvId;
+      if (pendingProjectId) {
+        await assignConversation(wpConvId, pendingProjectId);
+        setPendingProjectId(null);
+      }
     }
 
     const aiMsgId = crypto.randomUUID();
@@ -209,10 +277,11 @@ const Index = () => {
       content: replyContent,
       timestamp: new Date(),
       persona: selectedPersona,
+      engine: reply.engine || null,
+      artifactIds: reply.new_artifacts || [],
     };
 
-    const updatedMessages = [...newMessages, aiMsg];
-    setCurrentMessages(updatedMessages);
+    setCurrentMessages([...newMessages, aiMsg]);
     setIsTyping(false);
 
     setStreamingMessageId(aiMsgId);
@@ -223,25 +292,13 @@ const Index = () => {
     }
 
     if (wpMode) {
-      setTimeout(async () => {
-        await fetchConversations();
-        setAwaitingWpConvForProject(pendingProjectId);
-      }, 500);
+      if (reply.new_artifacts && reply.new_artifacts.length > 0) {
+        setArtifactsRefresh((n) => n + 1);
+        setPendingArtifactId(reply.open_artifact || reply.new_artifacts[reply.new_artifacts.length - 1]);
+      }
+      fetchConversations();
     }
   };
-
-  // WordPress mode: the plugin creates the conversation server-side, so we attach
-  // the newest conversation to the project the chat was started from.
-  const [awaitingWpConvForProject, setAwaitingWpConvForProject] = useState<string | null>(null);
-  useEffect(() => {
-    if (!wpMode || !awaitingWpConvForProject || conversations.length === 0) return;
-    const newest = conversations[0];
-    setActiveConvId((prev) => prev ?? newest.id);
-    assignConversation(newest.id, awaitingWpConvForProject);
-    setAwaitingWpConvForProject(null);
-    setPendingProjectId(null);
-  }, [wpMode, awaitingWpConvForProject, conversations, assignConversation]);
-
 
   const handleRegenerate = async (messageIndex: number) => {
     const userMsg = currentMessages.slice(0, messageIndex).reverse().find(m => m.role === 'user');
@@ -251,27 +308,33 @@ const Index = () => {
     setCurrentMessages(updated);
 
     setIsTyping(true);
-    let replyContent: string;
+    let reply: WPChatResponse;
     try {
-      replyContent = await sendMessageToWP(userMsg.content, null, wpMode ? selectedPersona.id : undefined);
+      reply = await dispatchChat(userMsg.content, null, activeConvId);
     } catch (error) {
-      replyContent = `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to regenerate'}`;
+      reply = {
+        message: `⚠️ Error: ${error instanceof Error ? error.message : 'Failed to regenerate'}`,
+        engine: null,
+      };
     }
 
     const aiMsgId = crypto.randomUUID();
     const aiMsg: Message = {
       id: aiMsgId,
       role: 'assistant',
-      content: replyContent,
+      content: reply.message || '',
       timestamp: new Date(),
       persona: selectedPersona,
+      engine: reply.engine || null,
+      artifactIds: reply.new_artifacts || [],
     };
 
     setCurrentMessages([...updated, aiMsg]);
     setIsTyping(false);
     setStreamingMessageId(aiMsgId);
-    setTimeout(() => setStreamingMessageId(null), Math.max(replyContent.length * 15, 3000));
+    setTimeout(() => setStreamingMessageId(null), Math.max((reply.message || '').length * 15, 3000));
   };
+
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
   const initials = displayName.charAt(0).toUpperCase();
@@ -329,6 +392,24 @@ const Index = () => {
             selectedProjectId={activeProjectId}
             onSelect={handleAssignProject}
           />
+
+          {wpMode && caps.canArtifacts && (
+            <button
+              onClick={() => {
+                if (!activeConvId) {
+                  toast.info('Start a chat first — artifacts are saved per conversation.');
+                  return;
+                }
+                setArtifactsOpen(true);
+              }}
+              className="p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
+              title={`Artifacts${bridge?.bridgeVersion ? ` · bridge ${bridge.bridgeVersion}` : ''}`}
+            >
+              <FileBox className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+
+
 
           {user ? (
             <button
@@ -428,6 +509,15 @@ const Index = () => {
           onClose={user ? () => setShowAuth(false) : undefined}
         />
       )}
+
+      <ArtifactsPanel
+        conversationId={activeConvId}
+        open={artifactsOpen}
+        onClose={() => { setArtifactsOpen(false); setPendingArtifactId(null); }}
+        refreshKey={artifactsRefresh}
+        openArtifactId={pendingArtifactId}
+      />
+
     </div>
   );
 };

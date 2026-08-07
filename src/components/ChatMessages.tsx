@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Copy, Check, RefreshCw, ExternalLink, FileBox, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { Message } from '@/lib/types';
+import { Copy, Check, RefreshCw, ExternalLink, FileBox, ThumbsUp, ThumbsDown, Cpu } from 'lucide-react';
+import { Message, EngineMeta } from '@/lib/types';
 import { MarkdownMessage } from './MarkdownMessage';
 import { StreamingMessage } from './StreamingMessage';
 import { ResultArtifactPanel, parseArtifacts, type Artifact } from './ResultArtifactPanel';
-import { rateEngineResponse } from '@/lib/wp-api';
+import { rateEngineResponse, isWordPress } from '@/lib/wp-api';
 import { toast } from 'sonner';
+
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -68,31 +69,58 @@ function CitationLinks({ content }: { content: string }) {
   );
 }
 
-function RatingButtons({ messageId }: { messageId: string }) {
-  const [rated, setRated] = useState<number | null>(null);
-  const send = async (value: number) => {
+/** Smart Model Engine badge — shows how the reply was produced. */
+function EngineBadge({ engine }: { engine: EngineMeta }) {
+  const mode = (engine.mode || '').toLowerCase();
+  const label =
+    mode === 'council'
+      ? `Council: ${engine.members?.length || 0} models${engine.judge ? ' + Judge' : ''}`
+      : mode === 'hybrid'
+        ? `Hybrid: ${engine.model || 'auto'}`
+        : mode === 'router'
+          ? `Router: ${engine.model || 'auto'}`
+          : engine.model || '';
+  if (!label) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium
+                 bg-primary/10 text-primary border border-primary/20"
+      title={engine.category ? `Category: ${engine.category}` : undefined}
+    >
+      <Cpu className="w-2.5 h-2.5" />
+      {label}
+    </span>
+  );
+}
+
+function RatingButtons({ engine }: { engine?: EngineMeta | null }) {
+  const [rated, setRated] = useState<boolean | null>(null);
+  const canRate = isWordPress() && !!engine?.model;
+  const send = async (liked: boolean) => {
     if (rated !== null) return;
-    setRated(value);
-    const ok = await rateEngineResponse(value, { message_id: messageId });
+    setRated(liked);
+    const ok = await rateEngineResponse(liked, { model: engine?.model, category: engine?.category });
     if (ok) toast.success('Thanks for the feedback');
+    else toast.error('Rating could not be recorded');
   };
+  if (!canRate) return null;
   return (
     <>
       <button
-        onClick={() => send(1)}
+        onClick={() => send(true)}
         disabled={rated !== null}
         className={`p-1 rounded hover:bg-muted transition-colors ${
-          rated === 1 ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+          rated === true ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
         }`}
         title="Good response"
       >
         <ThumbsUp className="w-3.5 h-3.5" />
       </button>
       <button
-        onClick={() => send(0)}
+        onClick={() => send(false)}
         disabled={rated !== null}
         className={`p-1 rounded hover:bg-muted transition-colors ${
-          rated === 0 ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
+          rated === false ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
         }`}
         title="Bad response"
       >
@@ -101,6 +129,7 @@ function RatingButtons({ messageId }: { messageId: string }) {
     </>
   );
 }
+
 
 export function ChatMessages({ messages, isTyping, streamingMessageId, onRegenerate }: ChatMessagesProps) {
   const [openArtifact, setOpenArtifact] = useState<Artifact | null>(null);
@@ -163,10 +192,8 @@ export function ChatMessages({ messages, isTyping, streamingMessageId, onRegener
               </div>
 
               {isAssistant && !isStreaming && (
-                <div className="flex items-center gap-1 mt-1 ml-1 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity"
-                     onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                     onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
-                >
+                <div className="flex flex-wrap items-center gap-1 mt-1 ml-1">
+                  {msg.engine && <EngineBadge engine={msg.engine} />}
                   <CopyButton text={stripped || msg.content} />
                   {onRegenerate && (
                     <button
@@ -177,9 +204,10 @@ export function ChatMessages({ messages, isTyping, streamingMessageId, onRegener
                       <RefreshCw className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  <RatingButtons messageId={String(msg.id)} />
+                  <RatingButtons engine={msg.engine} />
                 </div>
               )}
+
             </div>
           </div>
         );

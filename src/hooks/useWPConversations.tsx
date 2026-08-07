@@ -25,11 +25,12 @@ export function useWPConversations() {
         wpConvs.map((c: WPConversation) => ({
           id: String(c.id),
           title: c.title || `Conversation #${c.id}`,
-          personaId: '',
+          personaId: c.persona_id != null ? String(c.persona_id) : '',
           messages: [],
           updatedAt: new Date(c.updated_at),
         }))
       );
+
     } catch (err) {
       console.error('Failed to fetch WP conversations:', err);
     }

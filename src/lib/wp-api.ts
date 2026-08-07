@@ -115,22 +115,77 @@ async function wpAjax(
   return result.data;
 }
 
+// ===================== ENDPOINT MANIFEST (bridge-driven) =====================
+/**
+ * The bridge injects `endpoints[group][key] = { action, nonce, nopriv }`.
+ * We resolve actions dynamically and fall back to the hardcoded name so the UI
+ * keeps working with older bridges.
+ */
+export function resolveEndpoint(
+  group: string,
+  key: string,
+  fallbackAction: string,
+  fallbackNonce: NonceGroup = 'aicpp_chat',
+): { action: string; nonce: NonceGroup; available: boolean } {
+  const w = window as any;
+  const eps = (w.versace22_chat || w.aicppChat)?.endpoints;
+  const entry = eps?.[group]?.[key];
+  if (entry?.action) {
+    return { action: entry.action, nonce: (entry.nonce || fallbackNonce) as NonceGroup, available: true };
+  }
+  return { action: fallbackAction, nonce: fallbackNonce, available: false };
+}
+
+export function hasEndpoint(group: string, key: string): boolean {
+  return resolveEndpoint(group, key, '', 'aicpp_chat').available;
+}
+
+export function getBridgeInfo() {
+  const w = window as any;
+  const cfg = w.versace22_chat || w.aicppChat;
+  return {
+    bridgeVersion: cfg?.bridge_version || '',
+    pluginVersion: cfg?.plugin_version || '',
+    integrationMode: cfg?.integration_mode || '',
+    isAdmin: !!cfg?.is_admin,
+    userId: Number(cfg?.user_id || 0),
+  };
+}
+
 // ===================== CHAT =====================
 
-export async function sendMessageToWP(
+export interface WPEngineMeta {
+  mode?: string;                 // router | council | hybrid
+  category?: string;
+  model?: string;
+  members?: string[];
+  judge?: string;
+}
+
+export interface WPChatResponse {
+  message: string;
+  conversation_id?: number;
+  tokens?: number;
+  engine?: WPEngineMeta | null;
+  new_artifacts?: number[];
+  open_artifact?: number;
+}
+
+async function postChat(
+  action: string,
   message: string,
   attachment?: { url: string; type: string; data?: string } | null,
-  personaId?: string | number,
-): Promise<string> {
+  extra: Record<string, string> = {},
+): Promise<WPChatResponse> {
   const config = getWPConfig();
   if (!config) throw new Error('WordPress config not available');
 
   const formData = new FormData();
-  formData.append('action', 'aicpp_chat');
-  formData.append('nonce', config.nonce);
-  formData.append('persona_id', String(personaId || config.personaId));
+  formData.append('action', action);
+  formData.append('nonce', config.nonces['aicpp_chat'] || config.nonce);
   formData.append('message', message);
   formData.append('session_id', config.sessionId);
+  for (const [k, v] of Object.entries(extra)) formData.append(k, v);
 
   if (attachment) {
     formData.append('has_attachment', '1');
@@ -143,8 +198,49 @@ export async function sendMessageToWP(
   if (!response.ok) throw new Error(`Server error: ${response.status}`);
   const result = await response.json();
   if (!result.success) throw new Error(result.data?.message || 'Chat request failed');
-  return result.data.message;
+  const d = result.data || {};
+  return {
+    message: d.message,
+    conversation_id: d.conversation_id != null ? Number(d.conversation_id) : undefined,
+    tokens: d.tokens != null ? Number(d.tokens) : undefined,
+    engine: d.engine || null,
+    new_artifacts: Array.isArray(d.new_artifacts) ? d.new_artifacts.map(Number) : [],
+    open_artifact: d.open_artifact ? Number(d.open_artifact) : undefined,
+  };
 }
+
+/** Persona chat — aicpp_chat */
+export async function sendMessageToWP(
+  message: string,
+  attachment?: { url: string; type: string; data?: string } | null,
+  personaId?: string | number,
+  conversationId?: string | number | null,
+): Promise<WPChatResponse> {
+  const config = getWPConfig();
+  const ep = resolveEndpoint('chat', 'chat', 'aicpp_chat');
+  const extra: Record<string, string> = {
+    persona_id: String(personaId || config?.personaId || 1),
+  };
+  if (conversationId) extra.conversation_id = String(conversationId);
+  return postChat(ep.action, message, attachment, extra);
+}
+
+/** Main Site Character chat — aicpp_chat_main (no persona) */
+export async function sendMessageToMainWP(
+  message: string,
+  attachment?: { url: string; type: string; data?: string } | null,
+  conversationId?: string | number | null,
+): Promise<WPChatResponse> {
+  const ep = resolveEndpoint('chat', 'chat_main', 'aicpp_chat_main');
+  const extra: Record<string, string> = {};
+  if (conversationId) extra.conversation_id = String(conversationId);
+  return postChat(ep.action, message, attachment, extra);
+}
+
+export function hasMainCharacterEndpoint(): boolean {
+  return hasEndpoint('chat', 'chat_main');
+}
+
 
 // ===================== FILE UPLOAD =====================
 
@@ -529,22 +625,149 @@ export async function disconnectDataSourceWP(id: string | number): Promise<boole
 // NOTE: startDataSourceAuthWP intentionally REMOVED — the v12.5.1 bridge has
 // no aicpp_user_start_data_source_auth endpoint. Re-adding it will 400.
 
-// ===================== SMART ENGINE RATING =====================
+// ===================== SMART ENGINE (rating) =====================
+// v12.6 contract: aicpp_engine_rate expects model_id + category + rating (1..5).
 
 export async function rateEngineResponse(
-  rating: number,
-  context?: { conversation_id?: string | number; message_id?: string | number; model?: string },
+  liked: boolean,
+  context?: { model?: string; category?: string },
 ): Promise<boolean> {
   if (!isWordPress()) return false;
+  if (!context?.model) return false; // server rejects ratings without a known model
   try {
-    const params: Record<string, string> = { rating: String(rating) };
-    if (context?.conversation_id != null) params.conversation_id = String(context.conversation_id);
-    if (context?.message_id != null) params.message_id = String(context.message_id);
-    if (context?.model) params.model = context.model;
-    await wpAjax('aicpp_engine_rate', params);
+    const ep = resolveEndpoint('engine', 'rate', 'aicpp_engine_rate');
+    await wpAjax(
+      ep.action,
+      {
+        model_id: context.model,
+        category: context.category || 'general',
+        rating: liked ? '5' : '1',
+      },
+      ep.nonce,
+    );
     return true;
   } catch (e) {
     console.error('rateEngineResponse failed:', e);
     return false;
   }
 }
+
+// ===================== ARTIFACTS =====================
+
+export interface WPArtifact {
+  id: number;
+  title: string;
+  artifact_type: string;
+  version?: number;
+  updated_at?: string;
+  content?: string;
+  conversation_id?: number;
+}
+
+export async function listArtifactsWP(conversationId: string | number): Promise<WPArtifact[]> {
+  if (!isWordPress() || !conversationId) return [];
+  try {
+    const ep = resolveEndpoint('artifacts', 'list', 'aicpp_list_artifacts');
+    const d = await wpAjax(ep.action, { conversation_id: String(conversationId) }, ep.nonce);
+    return Array.isArray(d?.artifacts) ? d.artifacts : [];
+  } catch (e) {
+    console.error('listArtifactsWP failed:', e);
+    return [];
+  }
+}
+
+export async function getArtifactWP(id: string | number): Promise<WPArtifact | null> {
+  try {
+    const ep = resolveEndpoint('artifacts', 'get', 'aicpp_get_artifact');
+    const d = await wpAjax(ep.action, { artifact_id: String(id) }, ep.nonce);
+    return d ? (d as WPArtifact) : null;
+  } catch (e) {
+    console.error('getArtifactWP failed:', e);
+    return null;
+  }
+}
+
+export async function saveArtifactWP(a: {
+  id?: string | number;
+  conversationId?: string | number | null;
+  title: string;
+  type: string;
+  content: string;
+}): Promise<number | null> {
+  try {
+    const ep = resolveEndpoint('artifacts', 'save', 'aicpp_save_artifact');
+    const d = await wpAjax(
+      ep.action,
+      {
+        artifact_id: a.id ? String(a.id) : '0',
+        conversation_id: a.conversationId ? String(a.conversationId) : '0',
+        title: a.title,
+        artifact_type: a.type,
+        content: a.content,
+      },
+      ep.nonce,
+    );
+    return d?.id ? Number(d.id) : null;
+  } catch (e) {
+    console.error('saveArtifactWP failed:', e);
+    return null;
+  }
+}
+
+export async function deleteArtifactWP(id: string | number): Promise<boolean> {
+  try {
+    const ep = resolveEndpoint('artifacts', 'delete', 'aicpp_delete_artifact');
+    await wpAjax(ep.action, { artifact_id: String(id) }, ep.nonce);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ===================== REWARDS (referrals + leaderboard) =====================
+
+export interface WPReferralData {
+  referral_code: string;
+  referral_link: string;
+  referred_count: number;
+  points: number;
+}
+
+export interface WPLeaderboardEntry {
+  rank: number;
+  user_id: number;
+  username: string;
+  points: number;
+  badge: string;
+  avatar?: string;
+}
+
+export async function getReferralDataWP(): Promise<WPReferralData | null> {
+  if (!isWordPress() || !isWPUserLoggedIn()) return null;
+  try {
+    const ep = resolveEndpoint('rewards', 'referrals', 'aicpp_get_referral_data');
+    const d = await wpAjax(ep.action, {}, ep.nonce);
+    return {
+      referral_code: d?.referral_code || '',
+      referral_link: d?.referral_link || '',
+      referred_count: Number(d?.referred_count || 0),
+      points: Number(d?.points || 0),
+    };
+  } catch (e) {
+    console.error('getReferralDataWP failed:', e);
+    return null;
+  }
+}
+
+export async function getLeaderboardWP(): Promise<WPLeaderboardEntry[]> {
+  if (!isWordPress()) return [];
+  try {
+    const ep = resolveEndpoint('rewards', 'leaderboard', 'aicpp_get_leaderboard');
+    const d = await wpAjax(ep.action, {}, ep.nonce);
+    return Array.isArray(d?.leaderboard) ? d.leaderboard : [];
+  } catch (e) {
+    console.error('getLeaderboardWP failed:', e);
+    return [];
+  }
+}
+

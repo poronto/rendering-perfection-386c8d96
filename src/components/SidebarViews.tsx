@@ -1,9 +1,16 @@
-import { useState, useRef } from 'react';
-import { Gift, ArrowLeft, Save, X, Camera, Copy, Check, Share2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Gift, ArrowLeft, Save, X, Camera, Copy, Check, Share2, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useConversations';
 import { useWPConversations } from '@/hooks/useWPConversations';
-import { isWordPress } from '@/lib/wp-api';
+import {
+  isWordPress,
+  getReferralDataWP,
+  getLeaderboardWP,
+  type WPReferralData,
+  type WPLeaderboardEntry,
+} from '@/lib/wp-api';
+
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -219,9 +226,19 @@ function ProfileField({ label, value }: { label: string; value: string }) {
 export function ReferView({ onBackToChat }: ViewProps) {
   const { user, conversations } = useViewData();
   const [copied, setCopied] = useState(false);
+  const [referral, setReferral] = useState<WPReferralData | null>(null);
+  const [leaderboard, setLeaderboard] = useState<WPLeaderboardEntry[]>([]);
 
-  const referralCode = 'VERSACE-' + (user?.id?.substring(0, 6).toUpperCase() || 'GUEST');
-  const referralLink = `${window.location.origin}?ref=${referralCode}`;
+  useEffect(() => {
+    if (!isWordPress()) return;
+    getReferralDataWP().then(setReferral).catch(() => {});
+    getLeaderboardWP().then(setLeaderboard).catch(() => {});
+  }, []);
+
+  const referralCode =
+    referral?.referral_code || 'VERSACE-' + (user?.id?.substring(0, 6).toUpperCase() || 'GUEST');
+  const referralLink = referral?.referral_link || `${window.location.origin}?ref=${referralCode}`;
+
 
   const handleCopy = (text: string) => {
     navigator.clipboard?.writeText(text);
@@ -276,10 +293,30 @@ export function ReferView({ onBackToChat }: ViewProps) {
         </div>
 
         <div className="grid grid-cols-3 gap-3 text-center">
-          <RewardStat label="Referred" value="0" />
-          <RewardStat label="Earned" value={`${conversations.length * 10} pts`} />
+          <RewardStat label="Referred" value={String(referral?.referred_count ?? 0)} />
+          <RewardStat
+            label="Earned"
+            value={`${referral ? referral.points : conversations.length * 10} pts`}
+          />
           <RewardStat label="Reward" value="50 pts" subtitle="per invite" />
         </div>
+
+        {leaderboard.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5 text-primary" /> Leaderboard
+            </p>
+            {leaderboard.slice(0, 10).map((row) => (
+              <div key={`${row.rank}-${row.user_id}`} className="flex items-center gap-2 text-sm">
+                <span className="w-5 text-muted-foreground">{row.rank}</span>
+                <span className="flex-1 truncate text-foreground">{row.username}</span>
+                {row.badge && <span className="text-[10px] text-muted-foreground">{row.badge}</span>}
+                <span className="font-semibold text-primary">{row.points}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
 
         <div className="space-y-2">
           <button
