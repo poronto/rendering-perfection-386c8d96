@@ -5,6 +5,7 @@ import { getMyPersonasFromWP, getWPPersonaId, isWPUserLoggedIn, WPPersona } from
 function toPersona(persona: WPPersona): Persona {
   const name = persona.name || 'AI Assistant';
   const initials = persona.avatar_initials || name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  const visibility = (persona.visibility || 'private').toLowerCase();
 
   return {
     id: String(persona.id),
@@ -12,8 +13,10 @@ function toPersona(persona: WPPersona): Persona {
     description: persona.description || 'WordPress dashboard persona',
     model: persona.model || 'gpt-4',
     avatar: initials || 'AI',
+    visibility: visibility === 'public' ? 'public' : 'private',
   };
 }
+
 
 export function useWPPersonas(enabled: boolean) {
   const [personas, setPersonas] = useState<Persona[]>(enabled ? [] : DEFAULT_PERSONAS);
