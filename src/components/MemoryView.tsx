@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Brain, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Brain, Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMemory } from '@/hooks/useMemory';
 
@@ -8,9 +8,21 @@ interface MemoryViewProps {
 }
 
 export function MemoryView({ onBackToChat }: MemoryViewProps) {
-  const { memories, enabled, setEnabled, addMemory, deleteMemory, clearAll, loading } = useMemory();
+  const {
+    memories,
+    enabled,
+    setEnabled,
+    addMemory,
+    updateMemory,
+    toggleMemory,
+    deleteMemory,
+    clearAll,
+    loading,
+  } = useMemory();
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,21 +136,88 @@ export function MemoryView({ onBackToChat }: MemoryViewProps) {
           {!loading && memories.length === 0 && (
             <p className="text-sm text-muted-foreground text-center">No memories yet.</p>
           )}
-          {memories.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-start gap-3 px-4 py-3 rounded-xl bg-card border border-border"
-            >
-              <p className="flex-1 text-sm text-foreground">{m.content}</p>
-              <button
-                onClick={() => handleDelete(m.id)}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title="Delete memory"
+          {memories.map((m) => {
+            const isEditing = editingId === m.id;
+            const isOn = m.enabled !== false;
+            return (
+              <div
+                key={m.id}
+                className={`flex items-start gap-2 px-4 py-3 rounded-xl bg-card border border-border ${
+                  isOn ? '' : 'opacity-50'
+                }`}
               >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
+                {isEditing ? (
+                  <>
+                    <textarea
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                      maxLength={500}
+                      rows={2}
+                      className="flex-1 px-2 py-1 rounded-lg bg-background border border-border text-sm text-foreground focus:border-primary focus:outline-none resize-none"
+                    />
+                    <button
+                      onClick={async () => {
+                        const ok = await updateMemory(m.id, editDraft);
+                        if (ok) {
+                          toast.success('Memory updated');
+                          setEditingId(null);
+                        } else toast.error('Update failed');
+                      }}
+                      className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors"
+                      title="Save"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                      title="Cancel"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="flex-1 text-sm text-foreground">{m.content}</p>
+                    <button
+                      onClick={async () => {
+                        const ok = await toggleMemory(m.id);
+                        if (!ok) toast.error('Could not change status');
+                      }}
+                      className={`relative w-9 h-5 shrink-0 mt-0.5 rounded-full transition-colors ${
+                        isOn ? 'bg-primary' : 'bg-muted'
+                      }`}
+                      title={isOn ? 'Disable this memory' : 'Enable this memory'}
+                      aria-pressed={isOn}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-background rounded-full shadow transition-transform ${
+                          isOn ? 'translate-x-4' : ''
+                        }`}
+                      />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingId(m.id);
+                        setEditDraft(m.content);
+                      }}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      title="Edit memory"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(m.id)}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title="Delete memory"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
