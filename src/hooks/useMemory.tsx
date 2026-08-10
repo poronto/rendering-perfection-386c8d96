@@ -120,6 +120,42 @@ export function useMemory() {
     [wpMode, refresh],
   );
 
+  const updateMemory = useCallback(
+    async (id: string, content: string) => {
+      const trimmed = content.trim();
+      if (!trimmed) return false;
+      if (wpMode) {
+        const ok = await updateMemoryInWP(id, trimmed);
+        if (!ok) return false;
+        await refresh();
+        return true;
+      }
+      const next = readMemories().map((m) => (m.id === id ? { ...m, content: trimmed } : m));
+      writeMemories(next);
+      setMemories(next);
+      return true;
+    },
+    [wpMode, refresh],
+  );
+
+  const toggleMemory = useCallback(
+    async (id: string) => {
+      if (wpMode) {
+        const ok = await toggleMemoryInWP(id);
+        if (!ok) return false;
+        await refresh();
+        return true;
+      }
+      const next = readMemories().map((m) =>
+        m.id === id ? { ...m, enabled: m.enabled === false } : m,
+      );
+      writeMemories(next);
+      setMemories(next);
+      return true;
+    },
+    [wpMode, refresh],
+  );
+
   const clearAll = useCallback(async () => {
     if (wpMode) {
       const ok = await clearMemoriesInWP();
@@ -132,8 +168,10 @@ export function useMemory() {
   }, [wpMode]);
 
   const buildPreamble = useCallback((): string => {
-    if (!enabled || memories.length === 0) return '';
-    const lines = memories.map((m) => `- ${m.content}`).join('\n');
+    if (!enabled) return '';
+    const active = memories.filter((m) => m.enabled !== false);
+    if (active.length === 0) return '';
+    const lines = active.map((m) => `- ${m.content}`).join('\n');
     return `Known facts about the user:\n${lines}`;
   }, [enabled, memories]);
 
@@ -143,6 +181,8 @@ export function useMemory() {
     setEnabled,
     loading,
     addMemory,
+    updateMemory,
+    toggleMemory,
     deleteMemory,
     clearAll,
     refresh,
