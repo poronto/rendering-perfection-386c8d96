@@ -54,6 +54,7 @@ export function useMemory() {
         wp.map((m) => ({
           id: String(m.id),
           content: m.content,
+          enabled: m.enabled !== false,
           createdAt: m.created_at ? new Date(m.created_at) : new Date(),
         })),
       );
