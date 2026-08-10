@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Brain, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Brain, Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMemory } from '@/hooks/useMemory';
 
@@ -8,9 +8,21 @@ interface MemoryViewProps {
 }
 
 export function MemoryView({ onBackToChat }: MemoryViewProps) {
-  const { memories, enabled, setEnabled, addMemory, deleteMemory, clearAll, loading } = useMemory();
+  const {
+    memories,
+    enabled,
+    setEnabled,
+    addMemory,
+    updateMemory,
+    toggleMemory,
+    deleteMemory,
+    clearAll,
+    loading,
+  } = useMemory();
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
