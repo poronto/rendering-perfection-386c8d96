@@ -6,6 +6,8 @@ import {
   addMemoryToWP,
   deleteMemoryFromWP,
   clearMemoriesInWP,
+  updateMemoryInWP,
+  toggleMemoryInWP,
 } from '@/lib/wp-api';
 
 const MEMORY_KEY = 'versace22_memories';
