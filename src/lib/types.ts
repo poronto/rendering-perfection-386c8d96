@@ -48,6 +48,7 @@ export interface Project {
 export interface MemoryItem {
   id: string;
   content: string;
+  enabled?: boolean;
   createdAt: Date;
 }
 
