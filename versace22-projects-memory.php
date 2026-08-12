@@ -573,7 +573,9 @@ if (!function_exists('versace22_ajax_data_source_oauth_callback')) {
 if (!function_exists('versace22_ajax_disconnect_data_source')) {
     function versace22_ajax_disconnect_data_source() {
         $user_id = versace22_projects_check_request();
-        $sid = isset($_POST['source_id']) ? (int) $_POST['source_id'] : 0;
+        // Accept both param names (client sends data_source_id first).
+        $sid = isset($_POST['data_source_id']) ? (int) $_POST['data_source_id']
+             : (isset($_POST['source_id']) ? (int) $_POST['source_id'] : 0);
         if ($sid <= 0) wp_send_json_error(array('message' => 'Invalid source id'));
         global $wpdb;
         $table = $wpdb->prefix . 'aicpp_user_data_sources';
