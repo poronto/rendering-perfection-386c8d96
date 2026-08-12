@@ -24,6 +24,40 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * ---------------------------------------------------------------------------
+ * SINGLE-OWNER GUARD (harmony fix)
+ *
+ * versace22-enqueue.php ships AICPP_User_Endpoints_Inline, which is the
+ * canonical owner of every aicpp_user_* action the React client calls
+ * (memory_text/enabled/persona_id schema, data_sources key, data_source_id
+ * param, AES-256-CBC credential encryption, plus update/toggle handlers this
+ * file never had). The main plugin owns the bare admin-only aicpp_* actions.
+ *
+ * This file therefore registers NOTHING that either of them owns. It only
+ * fills genuine gaps (OAuth start/callback) and acts as a fallback owner if
+ * the bridge class is absent.
+ * ---------------------------------------------------------------------------
+ */
+if (!function_exists('versace22_pm_bridge_owns_endpoints')) {
+    function versace22_pm_bridge_owns_endpoints() {
+        return class_exists('AICPP_User_Endpoints_Inline');
+    }
+}
+if (!function_exists('versace22_pm_register')) {
+    /**
+     * @param string $action  AJAX action name (without wp_ajax_ prefix).
+     * @param mixed  $cb      Callback.
+     * @param bool   $gap     True = not owned by anyone else, always register.
+     */
+    function versace22_pm_register($action, $cb, $gap = false) {
+        if (!$gap && versace22_pm_bridge_owns_endpoints()) {
+            return; // bridge is the single owner - do not collide
+        }
+        add_action('wp_ajax_' . $action, $cb);
+    }
+}
+
 if (!function_exists('versace22_projects_install_schema')) {
     function versace22_projects_install_schema() {
         global $wpdb;
@@ -97,7 +131,7 @@ if (!function_exists('versace22_ajax_get_projects')) {
         ), ARRAY_A);
         wp_send_json_success(array('projects' => $rows ?: array()));
     }
-    add_action('wp_ajax_aicpp_get_projects', 'versace22_ajax_get_projects');
+    // removed: 'wp_ajax_aicpp_get_projects' is owned by the main plugin (admin-only)
 }
 
 if (!function_exists('versace22_ajax_create_project')) {
@@ -137,7 +171,7 @@ if (!function_exists('versace22_ajax_create_project')) {
             'created_at' => current_time('mysql'),
         )));
     }
-    add_action('wp_ajax_aicpp_create_project', 'versace22_ajax_create_project');
+    // removed: 'wp_ajax_aicpp_create_project' is owned by the main plugin (admin-only)
 }
 
 if (!function_exists('versace22_ajax_delete_project')) {
@@ -161,7 +195,7 @@ if (!function_exists('versace22_ajax_delete_project')) {
 
         wp_send_json_success(array('deleted' => (int) $deleted));
     }
-    add_action('wp_ajax_aicpp_delete_project', 'versace22_ajax_delete_project');
+    // removed: 'wp_ajax_aicpp_delete_project' is owned by the main plugin (admin-only)
 }
 
 if (!function_exists('versace22_ajax_assign_conversation_project')) {
@@ -203,7 +237,7 @@ if (!function_exists('versace22_ajax_assign_conversation_project')) {
 
         wp_send_json_success(array('conversation_id' => $conv_id, 'project_id' => $pid));
     }
-    add_action('wp_ajax_aicpp_assign_conversation_project', 'versace22_ajax_assign_conversation_project');
+    // removed: 'wp_ajax_aicpp_assign_conversation_project' is owned by the main plugin (admin-only)
 }
 
 // ===================== MEMORY =====================
@@ -219,7 +253,7 @@ if (!function_exists('versace22_ajax_get_memories')) {
         ), ARRAY_A);
         wp_send_json_success(array('memories' => $rows ?: array()));
     }
-    add_action('wp_ajax_aicpp_get_memories', 'versace22_ajax_get_memories');
+    // removed: 'wp_ajax_aicpp_get_memories' is owned by the main plugin (admin-only)
 }
 
 if (!function_exists('versace22_ajax_add_memory')) {
@@ -245,7 +279,7 @@ if (!function_exists('versace22_ajax_add_memory')) {
             'created_at' => current_time('mysql'),
         )));
     }
-    add_action('wp_ajax_aicpp_add_memory', 'versace22_ajax_add_memory');
+    // removed: 'wp_ajax_aicpp_add_memory' is owned by the main plugin (admin-only)
 }
 
 if (!function_exists('versace22_ajax_delete_memory')) {
@@ -261,7 +295,7 @@ if (!function_exists('versace22_ajax_delete_memory')) {
 
         wp_send_json_success(array('deleted' => (int) $deleted));
     }
-    add_action('wp_ajax_aicpp_delete_memory', 'versace22_ajax_delete_memory');
+    // removed: 'wp_ajax_aicpp_delete_memory' is owned by the main plugin (admin-only)
 }
 
 if (!function_exists('versace22_ajax_clear_memories')) {
@@ -272,7 +306,7 @@ if (!function_exists('versace22_ajax_clear_memories')) {
         $deleted = $wpdb->query($wpdb->prepare("DELETE FROM {$table} WHERE user_id = %d", $user_id));
         wp_send_json_success(array('deleted' => (int) $deleted));
     }
-    add_action('wp_ajax_aicpp_clear_memories', 'versace22_ajax_clear_memories');
+    // removed: 'wp_ajax_aicpp_clear_memories' is owned by the main plugin (admin-only)
 }
 
 // ============================================================
@@ -283,13 +317,15 @@ if (!function_exists('versace22_ajax_clear_memories')) {
 // ai-chat-persona-pro plugin on aicpp_get_projects / aicpp_get_memories / etc.
 // These aliases reuse the login-only, user-scoped callbacks defined above.
 // ============================================================
-add_action('wp_ajax_aicpp_user_list_projects',                'versace22_ajax_get_projects');
-add_action('wp_ajax_aicpp_user_create_project',               'versace22_ajax_create_project');
-add_action('wp_ajax_aicpp_user_delete_project',               'versace22_ajax_delete_project');
-add_action('wp_ajax_aicpp_user_assign_conversation_project',  'versace22_ajax_assign_conversation_project');
-add_action('wp_ajax_aicpp_user_get_memories',                 'versace22_ajax_get_memories');
-add_action('wp_ajax_aicpp_user_add_memory',                   'versace22_ajax_add_memory');
-add_action('wp_ajax_aicpp_user_delete_memory',                'versace22_ajax_delete_memory');
+// Registered ONLY when versace22-enqueue.php's AICPP_User_Endpoints_Inline is
+// absent, so the two files can never fight over the same action.
+versace22_pm_register('aicpp_user_list_projects',               'versace22_ajax_get_projects');
+versace22_pm_register('aicpp_user_create_project',              'versace22_ajax_create_project');
+versace22_pm_register('aicpp_user_delete_project',              'versace22_ajax_delete_project');
+versace22_pm_register('aicpp_user_assign_conversation_project', 'versace22_ajax_assign_conversation_project');
+versace22_pm_register('aicpp_user_get_memories',                'versace22_ajax_get_memories');
+versace22_pm_register('aicpp_user_add_memory',                  'versace22_ajax_add_memory');
+versace22_pm_register('aicpp_user_delete_memory',               'versace22_ajax_delete_memory');
 
 // ============================================================
 // DATA SOURCES (user-scoped) — schema + handlers
@@ -396,9 +432,10 @@ if (!function_exists('versace22_ajax_list_data_sources')) {
              WHERE user_id = %d ORDER BY created_at DESC",
             $user_id
         ), ARRAY_A);
-        wp_send_json_success(array('sources' => $rows ?: array()));
+        // Emit BOTH keys: the React client reads `data_sources` (bridge contract).
+        wp_send_json_success(array('data_sources' => $rows ?: array(), 'sources' => $rows ?: array()));
     }
-    add_action('wp_ajax_aicpp_user_list_data_sources', 'versace22_ajax_list_data_sources');
+    versace22_pm_register('aicpp_user_list_data_sources', 'versace22_ajax_list_data_sources');
 }
 
 if (!function_exists('versace22_ajax_connect_data_source')) {
@@ -425,7 +462,7 @@ if (!function_exists('versace22_ajax_connect_data_source')) {
         if (!$ok) wp_send_json_error(array('message' => 'Failed to connect data source'));
         wp_send_json_success(array('id' => (int) $wpdb->insert_id));
     }
-    add_action('wp_ajax_aicpp_user_connect_data_source', 'versace22_ajax_connect_data_source');
+    versace22_pm_register('aicpp_user_connect_data_source', 'versace22_ajax_connect_data_source');
 }
 
 if (!function_exists('versace22_ajax_start_data_source_auth')) {
@@ -467,7 +504,7 @@ if (!function_exists('versace22_ajax_start_data_source_auth')) {
 
         wp_send_json_success(array('auth_url' => add_query_arg($args, $cfg['auth_url'])));
     }
-    add_action('wp_ajax_aicpp_user_start_data_source_auth', 'versace22_ajax_start_data_source_auth');
+    versace22_pm_register('aicpp_user_start_data_source_auth', 'versace22_ajax_start_data_source_auth', true); // gap-filler: no bridge equivalent
 }
 
 if (!function_exists('versace22_ajax_data_source_oauth_callback')) {
@@ -530,13 +567,15 @@ if (!function_exists('versace22_ajax_data_source_oauth_callback')) {
         wp_safe_redirect(add_query_arg('versace22_data_source_connected', rawurlencode($provider), $return_url));
         exit;
     }
-    add_action('wp_ajax_aicpp_user_data_source_oauth_callback', 'versace22_ajax_data_source_oauth_callback');
+    versace22_pm_register('aicpp_user_data_source_oauth_callback', 'versace22_ajax_data_source_oauth_callback', true); // gap-filler: no bridge equivalent
 }
 
 if (!function_exists('versace22_ajax_disconnect_data_source')) {
     function versace22_ajax_disconnect_data_source() {
         $user_id = versace22_projects_check_request();
-        $sid = isset($_POST['source_id']) ? (int) $_POST['source_id'] : 0;
+        // Accept both param names (client sends data_source_id first).
+        $sid = isset($_POST['data_source_id']) ? (int) $_POST['data_source_id']
+             : (isset($_POST['source_id']) ? (int) $_POST['source_id'] : 0);
         if ($sid <= 0) wp_send_json_error(array('message' => 'Invalid source id'));
         global $wpdb;
         $table = $wpdb->prefix . 'aicpp_user_data_sources';
@@ -544,5 +583,5 @@ if (!function_exists('versace22_ajax_disconnect_data_source')) {
         if ($deleted === false) wp_send_json_error(array('message' => 'Delete failed'));
         wp_send_json_success(array('deleted' => (int) $deleted));
     }
-    add_action('wp_ajax_aicpp_user_disconnect_data_source', 'versace22_ajax_disconnect_data_source');
+    versace22_pm_register('aicpp_user_disconnect_data_source', 'versace22_ajax_disconnect_data_source');
 }

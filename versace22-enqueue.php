@@ -82,7 +82,7 @@ if (!defined('VERSACE22_ENQUEUE_MIN_AI_CHAT_VERSION')) {
 // AI Chat Persona Pro version compatibility ceiling
 // Updated to v12.5 to match current plugin release
 if (!defined('VERSACE22_ENQUEUE_MAX_AI_CHAT_VERSION')) {
-    define('VERSACE22_ENQUEUE_MAX_AI_CHAT_VERSION', '12.5');
+    define('VERSACE22_ENQUEUE_MAX_AI_CHAT_VERSION', '12.5.1');
 }
 function versace22_enqueue_check_compatibility() {
     if (!defined('AI_CHAT_PERSONA_PRO_VERSION')) {
