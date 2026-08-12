@@ -589,7 +589,10 @@ export async function listDataSourcesWP(): Promise<WPDataSource[]> {
   if (!isWordPress()) return [];
   try {
     const d = await wpAjax('aicpp_user_list_data_sources');
-    return Array.isArray(d?.data_sources) ? d.data_sources : [];
+    // Bridge returns `data_sources`; the projects-memory fallback owner returns
+    // `sources`. Accept either so the list never silently renders empty.
+    const list = d?.data_sources ?? d?.sources;
+    return Array.isArray(list) ? list : [];
   } catch (e) {
     console.error('listDataSourcesWP', e);
     return [];
@@ -615,7 +618,12 @@ export async function connectDataSourceWP(p: {
 
 export async function disconnectDataSourceWP(id: string | number): Promise<boolean> {
   try {
-    await wpAjax('aicpp_user_disconnect_data_source', { data_source_id: String(id) });
+    // `data_source_id` is the bridge contract; `source_id` keeps the fallback
+    // owner working. Sending both is harmless on either side.
+    await wpAjax('aicpp_user_disconnect_data_source', {
+      data_source_id: String(id),
+      source_id: String(id),
+    });
     return true;
   } catch {
     return false;

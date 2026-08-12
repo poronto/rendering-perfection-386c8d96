@@ -432,7 +432,8 @@ if (!function_exists('versace22_ajax_list_data_sources')) {
              WHERE user_id = %d ORDER BY created_at DESC",
             $user_id
         ), ARRAY_A);
-        wp_send_json_success(array('sources' => $rows ?: array()));
+        // Emit BOTH keys: the React client reads `data_sources` (bridge contract).
+        wp_send_json_success(array('data_sources' => $rows ?: array(), 'sources' => $rows ?: array()));
     }
     versace22_pm_register('aicpp_user_list_data_sources', 'versace22_ajax_list_data_sources');
 }
