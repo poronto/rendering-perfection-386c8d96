@@ -354,14 +354,40 @@ if (!function_exists('versace22_endpoint_manifest')) {
                 array('login',               'aicpp_login_user',          'aicpp_login', '',               true),
                 array('register',            'aicpp_register_user',       'aicpp_register','',             true),
             ),
+            // User-scoped data sources (owned by AICPP_User_Endpoints_Inline below).
+            // The plugin's own aicpp_ds_* actions are manage_options-gated, so they
+            // are advertised separately and only to admins.
             'data_sources' => array(
-                array('list',                'aicpp_ds_list',              'aicpp_chat',  'read',           false),
-                array('connect',             'aicpp_ds_connect',           'aicpp_chat',  'read',           false),
-                array('disconnect',          'aicpp_ds_disconnect',        'aicpp_chat',  'read',           false),
-                array('test',                'aicpp_ds_test',              'aicpp_chat',  'read',           false),
+                array('list',                'aicpp_user_list_data_sources',       'aicpp_chat', 'read', false),
+                array('connect',             'aicpp_user_connect_data_source',     'aicpp_chat', 'read', false),
+                array('disconnect',          'aicpp_user_disconnect_data_source',  'aicpp_chat', 'read', false),
+            ),
+            'data_sources_admin' => array(
+                array('list',                'aicpp_ds_list',              'aicpp',  'manage_options', false),
+                array('connect',             'aicpp_ds_connect',           'aicpp',  'manage_options', false),
+                array('disconnect',          'aicpp_ds_disconnect',        'aicpp',  'manage_options', false),
+                array('test',                'aicpp_ds_test',              'aicpp',  'manage_options', false),
+            ),
+            // User-scoped memory + projects (bridge-owned, single owner).
+            'user_memories' => array(
+                array('list',                'aicpp_user_get_memories',    'aicpp_chat', 'read', false),
+                array('add',                 'aicpp_user_add_memory',      'aicpp_chat', 'read', false),
+                array('update',              'aicpp_user_update_memory',   'aicpp_chat', 'read', false),
+                array('toggle',              'aicpp_user_toggle_memory',   'aicpp_chat', 'read', false),
+                array('delete',              'aicpp_user_delete_memory',   'aicpp_chat', 'read', false),
+            ),
+            'user_projects' => array(
+                array('list',                'aicpp_user_list_projects',   'aicpp_chat', 'read', false),
+                array('create',              'aicpp_user_create_project',  'aicpp_chat', 'read', false),
+                array('update',              'aicpp_user_update_project',  'aicpp_chat', 'read', false),
+                array('delete',              'aicpp_user_delete_project',  'aicpp_chat', 'read', false),
+                array('assign_conversation', 'aicpp_user_assign_conversation_project', 'aicpp_chat', 'read', false),
             ),
             'engine' => array(
                 array('rate',                'aicpp_engine_rate',          'aicpp_chat',  'read',           true),
+                array('seed_cards',          'aicpp_engine_seed_cards',    'aicpp',  'manage_options', false),
+                array('get_cards',           'aicpp_engine_get_cards',     'aicpp',  'manage_options', false),
+                array('perf',                'aicpp_engine_perf',          'aicpp',  'manage_options', false),
             ),
             'models' => array(
                 array('free_models',         'aicpp_or_free_models',      'aicpp',  'manage_options', false),
