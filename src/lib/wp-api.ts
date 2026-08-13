@@ -1,9 +1,9 @@
 /**
- * WordPress AJAX API bridge — v12.5.1-compatible
+ * WordPress AJAX API bridge — v12.6-compatible (BrandLock)
  *
  * Reads config injected by versace22-enqueue.php via wp_localize_script.
  *
- * Bridge contract (v12.5.1):
+ * Bridge contract (v12.6):
  *  - window.versace22_chat (+ window.aicppChat alias)
  *  - nonces: per-group bundle { aicpp_chat, aicpp_login, aicpp_register, aicpp }
  *  - endpoints: action manifest grouped by feature
@@ -134,6 +134,21 @@ export function resolveEndpoint(
     return { action: entry.action, nonce: (entry.nonce || fallbackNonce) as NonceGroup, available: true };
   }
   return { action: fallbackAction, nonce: fallbackNonce, available: false };
+}
+
+/**
+ * Manifest-aware wpAjax: resolves the action + nonce group from the bridge
+ * manifest (window.versace22_chat.endpoints) and falls back to the hardcoded
+ * action name so older bridges keep working.
+ */
+async function wpAjaxEp(
+  group: string,
+  key: string,
+  fallbackAction: string,
+  params: Record<string, string> = {},
+): Promise<any> {
+  const ep = resolveEndpoint(group, key, fallbackAction);
+  return wpAjax(ep.action, params, ep.nonce);
 }
 
 export function hasEndpoint(group: string, key: string): boolean {
@@ -420,7 +435,7 @@ export interface WPProject {
 export async function getProjectsFromWP(): Promise<WPProject[]> {
   if (!isWordPress()) return [];
   try {
-    const data = await wpAjax('aicpp_user_list_projects');
+    const data = await wpAjaxEp('user_projects','list','aicpp_user_list_projects');
     return Array.isArray(data?.projects) ? data.projects : [];
   } catch (err) {
     console.error('getProjectsFromWP failed:', err);
@@ -433,7 +448,7 @@ export async function createProjectInWP(project: {
   description?: string;
   custom_instructions?: string;
 }): Promise<WPProject | null> {
-  const data = await wpAjax('aicpp_user_create_project', {
+  const data = await wpAjaxEp('user_projects','create','aicpp_user_create_project', {
     name: project.name,
     description: project.description || '',
     custom_instructions: project.custom_instructions || '',
@@ -455,7 +470,7 @@ export async function updateProjectInWP(p: {
   custom_instructions?: string;
 }): Promise<boolean> {
   try {
-    await wpAjax('aicpp_user_update_project', {
+    await wpAjaxEp('user_projects','update','aicpp_user_update_project', {
       project_id: String(p.id),
       name: p.name,
       description: p.description || '',
@@ -469,7 +484,7 @@ export async function updateProjectInWP(p: {
 
 export async function deleteProjectFromWP(id: string | number): Promise<boolean> {
   try {
-    await wpAjax('aicpp_user_delete_project', { project_id: String(id) });
+    await wpAjaxEp('user_projects','delete','aicpp_user_delete_project', { project_id: String(id) });
     return true;
   } catch {
     return false;
@@ -481,7 +496,7 @@ export async function assignConversationProjectWP(
   projectId: string | number | null,
 ): Promise<boolean> {
   try {
-    await wpAjax('aicpp_user_assign_conversation_project', {
+    await wpAjaxEp('user_projects','assign_conversation','aicpp_user_assign_conversation_project', {
       conversation_id: String(conversationId),
       project_id: projectId === null ? '' : String(projectId),
     });
@@ -503,7 +518,7 @@ export interface WPMemoryItem {
 export async function getMemoriesFromWP(): Promise<WPMemoryItem[]> {
   if (!isWordPress()) return [];
   try {
-    const data = await wpAjax('aicpp_user_get_memories');
+    const data = await wpAjaxEp('user_memories','list','aicpp_user_get_memories');
     const raw = Array.isArray(data?.memories) ? data.memories : [];
     // PHP rows use `memory_text` + `enabled`; normalize for the React layer.
     return raw.map((m: any) => ({
@@ -521,7 +536,7 @@ export async function getMemoriesFromWP(): Promise<WPMemoryItem[]> {
 export async function addMemoryToWP(content: string): Promise<WPMemoryItem | null> {
   const personaId = getWPPersonaId();
   // PHP handler requires `memory_text` (422 otherwise). Scope to the active persona.
-  const data = await wpAjax('aicpp_user_add_memory', {
+  const data = await wpAjaxEp('user_memories','add','aicpp_user_add_memory', {
     memory_text: content,
     content,
     persona_id: String(personaId),
@@ -531,7 +546,7 @@ export async function addMemoryToWP(content: string): Promise<WPMemoryItem | nul
 
 export async function updateMemoryInWP(id: string | number, content: string): Promise<boolean> {
   try {
-    await wpAjax('aicpp_user_update_memory', { memory_id: String(id), memory_text: content });
+    await wpAjaxEp('user_memories','update','aicpp_user_update_memory', { memory_id: String(id), memory_text: content });
     return true;
   } catch {
     return false;
@@ -540,7 +555,7 @@ export async function updateMemoryInWP(id: string | number, content: string): Pr
 
 export async function toggleMemoryInWP(id: string | number): Promise<boolean> {
   try {
-    await wpAjax('aicpp_user_toggle_memory', { memory_id: String(id) });
+    await wpAjaxEp('user_memories','toggle','aicpp_user_toggle_memory', { memory_id: String(id) });
     return true;
   } catch {
     return false;
@@ -549,7 +564,7 @@ export async function toggleMemoryInWP(id: string | number): Promise<boolean> {
 
 export async function deleteMemoryFromWP(id: string | number): Promise<boolean> {
   try {
-    await wpAjax('aicpp_user_delete_memory', { memory_id: String(id) });
+    await wpAjaxEp('user_memories','delete','aicpp_user_delete_memory', { memory_id: String(id) });
     return true;
   } catch {
     return false;
@@ -588,7 +603,7 @@ export interface WPDataSource {
 export async function listDataSourcesWP(): Promise<WPDataSource[]> {
   if (!isWordPress()) return [];
   try {
-    const d = await wpAjax('aicpp_user_list_data_sources');
+    const d = await wpAjaxEp('data_sources','list','aicpp_user_list_data_sources');
     // Bridge returns `data_sources`; the projects-memory fallback owner returns
     // `sources`. Accept either so the list never silently renders empty.
     const list = d?.data_sources ?? d?.sources;
@@ -607,7 +622,7 @@ export async function connectDataSourceWP(p: {
   if (!p.credentials || !p.credentials.trim()) {
     throw new Error('Credentials are required for Notion / Jira in this version.');
   }
-  const d = await wpAjax('aicpp_user_connect_data_source', {
+  const d = await wpAjaxEp('data_sources','connect','aicpp_user_connect_data_source', {
     provider: p.provider,
     label: p.label || '',
     credentials: p.credentials,
@@ -620,7 +635,7 @@ export async function disconnectDataSourceWP(id: string | number): Promise<boole
   try {
     // `data_source_id` is the bridge contract; `source_id` keeps the fallback
     // owner working. Sending both is harmless on either side.
-    await wpAjax('aicpp_user_disconnect_data_source', {
+    await wpAjaxEp('data_sources','disconnect','aicpp_user_disconnect_data_source', {
       data_source_id: String(id),
       source_id: String(id),
     });
@@ -654,8 +669,16 @@ export async function rateEngineResponse(
       ep.nonce,
     );
     return true;
-  } catch (e) {
-    console.error('rateEngineResponse failed:', e);
+  } catch (e: any) {
+    // v12.6 rejects ratings for models that have no card row. Surface the real
+    // cause so it isn't mistaken for a broken rating button.
+    if (String(e?.message || '').toLowerCase().includes('unknown model')) {
+      console.warn(
+        'Engine rating rejected: model card missing. Run "Seed / refresh default cards" in the plugin admin.',
+      );
+    } else {
+      console.error('rateEngineResponse failed:', e);
+    }
     return false;
   }
 }
