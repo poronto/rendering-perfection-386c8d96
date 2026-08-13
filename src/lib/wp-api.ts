@@ -669,8 +669,16 @@ export async function rateEngineResponse(
       ep.nonce,
     );
     return true;
-  } catch (e) {
-    console.error('rateEngineResponse failed:', e);
+  } catch (e: any) {
+    // v12.6 rejects ratings for models that have no card row. Surface the real
+    // cause so it isn't mistaken for a broken rating button.
+    if (String(e?.message || '').toLowerCase().includes('unknown model')) {
+      console.warn(
+        'Engine rating rejected: model card missing. Run "Seed / refresh default cards" in the plugin admin.',
+      );
+    } else {
+      console.error('rateEngineResponse failed:', e);
+    }
     return false;
   }
 }
