@@ -80,9 +80,11 @@ if (!defined('VERSACE22_ENQUEUE_MIN_AI_CHAT_VERSION')) {
     define('VERSACE22_ENQUEUE_MIN_AI_CHAT_VERSION', '1.0.0');
 }
 // AI Chat Persona Pro version compatibility ceiling
-// Updated to v12.5 to match current plugin release
+// Updated to v12.6 to match the current plugin release (BrandLock FINAL).
+// Keep these three numbers identical: plugin define(), plugin "Version:" header,
+// and this ceiling — otherwise WP shows the "newer than tested" admin notice.
 if (!defined('VERSACE22_ENQUEUE_MAX_AI_CHAT_VERSION')) {
-    define('VERSACE22_ENQUEUE_MAX_AI_CHAT_VERSION', '12.5.1');
+    define('VERSACE22_ENQUEUE_MAX_AI_CHAT_VERSION', '12.6');
 }
 function versace22_enqueue_check_compatibility() {
     if (!defined('AI_CHAT_PERSONA_PRO_VERSION')) {
