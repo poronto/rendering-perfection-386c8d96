@@ -328,6 +328,8 @@ export interface WPConversation {
   token_count: number;
   created_at: string;
   updated_at: string;
+  pinned?: number | boolean;
+  is_pinned?: number | boolean;
 }
 
 export interface WPMessage {
