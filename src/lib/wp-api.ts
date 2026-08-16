@@ -802,3 +802,63 @@ export async function getLeaderboardWP(): Promise<WPLeaderboardEntry[]> {
   }
 }
 
+
+// ===================== v12.6: SPEAK / SEARCH / PIN =====================
+
+export type WPVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+
+/**
+ * Text-to-speech via the plugin's `aicpp_speak` endpoint (OpenAI TTS).
+ * Returns a data: URL with the MP3 payload, or null when unavailable.
+ */
+export async function speakTextWP(text: string, voice: WPVoice = 'alloy'): Promise<string | null> {
+  if (!isWordPress()) return null;
+  try {
+    const d = await wpAjaxEp('chat', 'speak', 'aicpp_speak', {
+      text: text.slice(0, 2500),
+      voice,
+    });
+    return d?.audio || null;
+  } catch (e) {
+    console.error('speakTextWP failed:', e);
+    throw e;
+  }
+}
+
+export interface WPMessageSearchResult {
+  id: number;
+  conversation_id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  title: string;
+}
+
+/** Full-text (LIKE) search across the user's messages — `aicpp_search_messages`. */
+export async function searchMessagesWP(query: string): Promise<WPMessageSearchResult[]> {
+  if (!isWordPress() || query.trim().length < 2) return [];
+  try {
+    const d = await wpAjaxEp('chat', 'search_messages', 'aicpp_search_messages', { query: query.trim() });
+    return Array.isArray(d?.results) ? d.results : [];
+  } catch (e) {
+    console.error('searchMessagesWP failed:', e);
+    return [];
+  }
+}
+
+/** Toggle (or explicitly set) the pinned flag on a conversation — `aicpp_pin_conversation`. */
+export async function pinConversationWP(
+  conversationId: string | number,
+  pinned?: boolean,
+): Promise<boolean | null> {
+  if (!isWordPress()) return null;
+  try {
+    const params: Record<string, string> = { conversation_id: String(conversationId) };
+    if (pinned !== undefined) params.pinned = pinned ? '1' : '0';
+    const d = await wpAjaxEp('conversations', 'pin', 'aicpp_pin_conversation', params);
+    return Number(d?.pinned) === 1;
+  } catch (e) {
+    console.error('pinConversationWP failed:', e);
+    return null;
+  }
+}
