@@ -34,6 +34,7 @@ export interface Conversation {
   messages: Message[];
   updatedAt: Date;
   projectId?: string | null;
+  pinned?: boolean;
 }
 
 
