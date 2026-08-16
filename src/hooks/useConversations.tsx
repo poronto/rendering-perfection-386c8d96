@@ -92,10 +92,16 @@ export function useConversations() {
     setConversations(prev => prev.filter(c => c.id !== id));
   }, []);
 
+  /** Local-only pin toggle (standalone mode has no server pin column). */
+  const togglePin = useCallback(async (id: string) => {
+    setConversations(prev => prev.map(c => (c.id === id ? { ...c, pinned: !c.pinned } : c)));
+  }, []);
+
   return {
     conversations,
     loading,
     fetchConversations,
+    togglePin,
     loadMessages,
     createConversation,
     saveMessage,
