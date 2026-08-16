@@ -4,7 +4,7 @@ import { Message, EngineMeta } from '@/lib/types';
 import { MarkdownMessage } from './MarkdownMessage';
 import { StreamingMessage } from './StreamingMessage';
 import { ResultArtifactPanel, parseArtifacts, type Artifact } from './ResultArtifactPanel';
-import { rateEngineResponse, isWordPress, speakTextWP, hasEndpoint } from '@/lib/wp-api';
+import { rateEngineResponse, isWordPress, speakTextWP } from '@/lib/wp-api';
 import { toast } from 'sonner';
 
 
@@ -135,7 +135,7 @@ function RatingButtons({ engine }: { engine?: EngineMeta | null }) {
 function SpeakButton({ text }: { text: string }) {
   const [state, setState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const available = isWordPress() && (hasEndpoint('chat', 'speak') || true);
+  const available = isWordPress();
 
   useEffect(() => () => { audioRef.current?.pause(); }, []);
 
