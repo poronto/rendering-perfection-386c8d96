@@ -96,6 +96,7 @@ export function useWPConversations() {
     conversations,
     loading,
     fetchConversations,
+    togglePin,
     loadMessages,
     createConversation,
     saveMessage,
