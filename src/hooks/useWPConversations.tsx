@@ -3,6 +3,7 @@ import {
   getConversationsFromWP,
   loadConversationFromWP,
   deleteConversationFromWP,
+  pinConversationWP,
   WPConversation,
 } from '@/lib/wp-api';
 import { Message, Conversation } from '@/lib/types';
@@ -28,6 +29,7 @@ export function useWPConversations() {
           personaId: c.persona_id != null ? String(c.persona_id) : '',
           messages: [],
           updatedAt: new Date(c.updated_at),
+          pinned: Boolean(Number(c.pinned ?? c.is_pinned ?? 0)),
         }))
       );
 
@@ -36,6 +38,19 @@ export function useWPConversations() {
     }
     setLoading(false);
   }, []);
+
+  /** Server-backed pin toggle (v12.6 `aicpp_pin_conversation`). */
+  const togglePin = useCallback(async (id: string) => {
+    const current = conversations.find((c) => c.id === id)?.pinned ?? false;
+    // Optimistic flip, reconciled with the server response.
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned: !current } : c)));
+    const result = await pinConversationWP(id, !current);
+    if (result === null) {
+      setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned: current } : c)));
+      return;
+    }
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned: result } : c)));
+  }, [conversations]);
 
   useEffect(() => {
     fetchConversations();
@@ -81,6 +96,7 @@ export function useWPConversations() {
     conversations,
     loading,
     fetchConversations,
+    togglePin,
     loadMessages,
     createConversation,
     saveMessage,

@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Copy, Check, RefreshCw, ExternalLink, FileBox, ThumbsUp, ThumbsDown, Cpu } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Copy, Check, RefreshCw, ExternalLink, FileBox, ThumbsUp, ThumbsDown, Cpu, Volume2, Loader2, Square } from 'lucide-react';
 import { Message, EngineMeta } from '@/lib/types';
 import { MarkdownMessage } from './MarkdownMessage';
 import { StreamingMessage } from './StreamingMessage';
 import { ResultArtifactPanel, parseArtifacts, type Artifact } from './ResultArtifactPanel';
-import { rateEngineResponse, isWordPress } from '@/lib/wp-api';
+import { rateEngineResponse, isWordPress, speakTextWP } from '@/lib/wp-api';
 import { toast } from 'sonner';
 
 
@@ -131,6 +131,57 @@ function RatingButtons({ engine }: { engine?: EngineMeta | null }) {
 }
 
 
+/** Read Aloud — v12.6 `aicpp_speak` (OpenAI TTS) rendered as an inline player. */
+function SpeakButton({ text }: { text: string }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'playing'>('idle');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const available = isWordPress();
+
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
+
+  if (!available) return null;
+
+  const stop = () => {
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setState('idle');
+  };
+
+  const play = async () => {
+    if (state === 'playing') return stop();
+    if (state === 'loading') return;
+    setState('loading');
+    try {
+      const src = await speakTextWP(text);
+      if (!src) throw new Error('No audio returned');
+      const audio = new Audio(src);
+      audioRef.current = audio;
+      audio.onended = () => setState('idle');
+      audio.onerror = () => setState('idle');
+      await audio.play();
+      setState('playing');
+    } catch (e) {
+      setState('idle');
+      toast.error(e instanceof Error ? e.message : 'Voice synthesis failed');
+    }
+  };
+
+  return (
+    <button
+      onClick={play}
+      className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+      title={state === 'playing' ? 'Stop' : 'Read aloud'}
+    >
+      {state === 'loading'
+        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        : state === 'playing'
+          ? <Square className="w-3.5 h-3.5 text-primary" />
+          : <Volume2 className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
+
+
 export function ChatMessages({ messages, isTyping, streamingMessageId, onRegenerate }: ChatMessagesProps) {
   const [openArtifact, setOpenArtifact] = useState<Artifact | null>(null);
   if (messages.length === 0 && !isTyping) return null;
@@ -195,6 +246,7 @@ export function ChatMessages({ messages, isTyping, streamingMessageId, onRegener
                 <div className="flex flex-wrap items-center gap-1 mt-1 ml-1">
                   {msg.engine && <EngineBadge engine={msg.engine} />}
                   <CopyButton text={stripped || msg.content} />
+                  <SpeakButton text={stripped || msg.content} />
                   {onRegenerate && (
                     <button
                       onClick={() => onRegenerate(i)}

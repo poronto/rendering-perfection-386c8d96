@@ -63,6 +63,7 @@ const Index = () => {
     saveMessage,
     deleteConversation,
     fetchConversations,
+    togglePin,
   } = wpMode ? wpConv : supaConv;
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -376,6 +377,7 @@ const Index = () => {
         onSignOut={signOut}
         projects={projects}
         projectAssignments={projectAssignments}
+        onTogglePin={togglePin}
       />
 
       <main className="flex-1 flex flex-col min-w-0">
