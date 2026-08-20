@@ -21,7 +21,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    const root = document.documentElement;
+    // In WordPress mode, we target the specific root container to avoid polluting global styles
+    const container = document.getElementById('versace22-chat-root');
+    const root = container || document.documentElement;
+    
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
     localStorage.setItem('versace22-theme', theme);
